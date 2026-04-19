@@ -2,13 +2,16 @@ services:
   - type: web
     name: normativaup-backend
     runtime: python
+    rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
-        value: "3.14"
+        value: "3.12"
       - key: OPENAI_API_KEY
         sync: false
+      - key: EMBEDDING_PROVIDER
+        value: "openai"
     plan: free
 
   - type: web

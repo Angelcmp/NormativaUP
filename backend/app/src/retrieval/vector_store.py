@@ -1,6 +1,6 @@
 """
 Creador de base de datos vectorial para consultas legales
-Utiliza ChromaDB con embeddings sentence-transformers
+Soporta OpenAI embeddings (cloud, low memory) y sentence-transformers (local)
 """
 from pathlib import Path
 from typing import List, Optional
@@ -8,16 +8,30 @@ import os
 import shutil
 
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.documents import Document
 from loguru import logger
 
 from app.config.settings import (
     VECTOR_STORE_DIR,
     EMBEDDING_MODEL,
+    EMBEDDING_PROVIDER,
     TOP_K_RETRIEVAL,
-    MODEL_CACHE_DIR,
 )
+
+
+def _create_embeddings():
+    if EMBEDDING_PROVIDER == "openai":
+        from langchain_openai import OpenAIEmbeddings
+        logger.info(f"Using OpenAI embeddings: {EMBEDDING_MODEL}")
+        return OpenAIEmbeddings(model=EMBEDDING_MODEL)
+    else:
+        from langchain_huggingface import HuggingFaceEmbeddings
+        from app.config.settings import MODEL_CACHE_DIR
+        logger.info(f"Using local embeddings: {EMBEDDING_MODEL}")
+        return HuggingFaceEmbeddings(
+            model_name=EMBEDDING_MODEL,
+            cache_folder=str(MODEL_CACHE_DIR),
+        )
 
 
 class BaseDatosVectorial:
@@ -37,10 +51,7 @@ class BaseDatosVectorial:
     def _inicializar_embeddings(self):
         """Inicializa el modelo de embeddings."""
         try:
-            self.embeddings = HuggingFaceEmbeddings(
-                model_name=self.modelo_embeddings,
-                cache_folder=str(MODEL_CACHE_DIR)
-            )
+            self.embeddings = _create_embeddings()
             logger.info(f"Embeddings inicializados: {self.modelo_embeddings}")
         except Exception as e:
             logger.error(f"Error al inicializar embeddings: {e}")
@@ -139,6 +150,7 @@ class BaseDatosVectorial:
         return {
             "total_documentos": total_docs,
             "modelo_embeddings": self.modelo_embeddings,
+            "proveedor_embeddings": EMBEDDING_PROVIDER,
             "ruta_persistencia": self.persistencia
         }
 
@@ -158,10 +170,11 @@ def cargar_base_datos() -> BaseDatosVectorial:
 
 
 if __name__ == "__main__":
-    from src.ingestion.document_loader import cargar_documentos
+    from app.src.ingestion.document_loader import cargar_documentos
+    from app.config.settings import RAW_DATA_DIR
     
     logger.info("Creando base de datos vectorial...")
-    documentos = cargar_documentos("data/raw")
+    documentos = cargar_documentos(str(RAW_DATA_DIR))
     db = crear_base_datos(documentos)
     stats = db.obtener_estadisticas()
-    logger.info(f"Estadísticas: {stats}")
+    logger.info(f"Estadisticas: {stats}")

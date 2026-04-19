@@ -12,7 +12,6 @@ BASE_DIR = Path(__file__).parent.parent.parent
 DATA_DIR = BASE_DIR / "data"
 VECTOR_STORE_DIR = DATA_DIR / "vector_store"
 RAW_DATA_DIR = DATA_DIR / "raw"
-MODEL_CACHE_DIR = BASE_DIR / "data" / "model_cache"
 
 for dir_path in [DATA_DIR, VECTOR_STORE_DIR, RAW_DATA_DIR]:
     dir_path.mkdir(parents=True, exist_ok=True)
@@ -21,17 +20,17 @@ for dir_path in [DATA_DIR, VECTOR_STORE_DIR, RAW_DATA_DIR]:
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = "gpt-4o"
 
-# Groq (alternativo - para futuro)
-# GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-# LLM_MODEL = "llama-3.1-70b-versatile"
+# Embedding provider: "openai" for cloud (low memory) or "local" for sentence-transformers (high memory)
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "openai")
 
-# Ollama (alternativo - para futuro)
-# OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+# Local embeddings (requires ~1GB RAM)
+EMBEDDING_MODEL_LOCAL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+MODEL_CACHE_DIR = DATA_DIR / "model_cache"
 
-# Anthropic (alternativo - para futuro)
-# ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+# OpenAI embeddings (requires only ~100MB RAM)
+EMBEDDING_MODEL_OPENAI = "text-embedding-3-small"
 
-EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+EMBEDDING_MODEL = EMBEDDING_MODEL_OPENAI if EMBEDDING_PROVIDER == "openai" else EMBEDDING_MODEL_LOCAL
 
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200

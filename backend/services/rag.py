@@ -47,6 +47,12 @@ class RAGService:
         try:
             self.vector_db = BaseDatosVectorial()
             self.vector_db.crear_o_cargar([])
+            if not self.vector_db.vectorstore:
+                from app.src.ingestion.document_loader import cargar_documentos
+                from app.config.settings import RAW_DATA_DIR
+                documentos = cargar_documentos(str(RAW_DATA_DIR))
+                if documentos:
+                    self.vector_db.crear_o_cargar(documentos)
             self.initialized = True
         except Exception as e:
             import logging
