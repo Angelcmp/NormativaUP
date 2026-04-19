@@ -38,13 +38,20 @@ class RAGService:
     def __init__(self):
         self.vector_db: Optional[BaseDatosVectorial] = None
         self.client: Optional[OpenAI] = None
+        self.initialized = False
 
     def initialize(self):
         if OPENAI_API_KEY and OPENAI_API_KEY != "sk-tu-api-key-aqui":
             self.client = OpenAI(api_key=OPENAI_API_KEY)
 
-        self.vector_db = BaseDatosVectorial()
-        self.vector_db.crear_o_cargar([])
+        try:
+            self.vector_db = BaseDatosVectorial()
+            self.vector_db.crear_o_cargar([])
+            self.initialized = True
+        except Exception as e:
+            import logging
+            logging.getLogger("normativaup").error(f"Failed to initialize vector store: {e}")
+            self.initialized = False
 
     def search(self, query: str, k: int = TOP_K_RETRIEVAL) -> List[Document]:
         if not self.vector_db or not self.vector_db.vectorstore:
