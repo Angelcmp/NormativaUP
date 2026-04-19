@@ -106,11 +106,14 @@ Responde basandote unicamente en los documentos de referencia."""
             return ConfidenceInfo(level="bajo", percentage=0, source_count=0)
         scores = [doc.metadata.get("score", 1.0) for doc in documents]
         avg = sum(scores) / len(scores)
-        if avg > 0.7:
-            return ConfidenceInfo(level="alto", percentage=int(avg * 100), source_count=len(documents))
-        elif avg > 0.4:
-            return ConfidenceInfo(level="medio", percentage=int(avg * 100), source_count=len(documents))
-        return ConfidenceInfo(level="bajo", percentage=int(avg * 100), source_count=len(documents))
+        # ChromaDB L2 distance: lower is better (<0.5=alto, 0.5-1.0=medio, >1.0=bajo)
+        # Convert distance to a 0-100 confidence percentage (inverted)
+        percentage = max(0, min(100, int((1 / (1 + avg)) * 100)))
+        if avg < 0.5:
+            return ConfidenceInfo(level="alto", percentage=percentage, source_count=len(documents))
+        elif avg < 1.0:
+            return ConfidenceInfo(level="medio", percentage=percentage, source_count=len(documents))
+        return ConfidenceInfo(level="bajo", percentage=percentage, source_count=len(documents))
 
     def format_sources(self, documents: List[Document]) -> List[SourceInfo]:
         return [
