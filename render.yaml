@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: normativaup-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.14"
+      - key: OPENAI_API_KEY
+        sync: false
+    plan: free
+
+  - type: web
+    name: normativaup-frontend
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: "https://normativaup-backend.onrender.com"
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://normativaup-backend.onrender.com/api/*
