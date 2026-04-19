@@ -21,7 +21,7 @@ services:
     staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_URL
-        value: "https://normativaup-backend.onrender.com"
+        value: "https://normativaup-backend.onrender.com/api"
     routes:
       - type: rewrite
         source: /api/*
