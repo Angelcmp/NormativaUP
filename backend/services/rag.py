@@ -109,9 +109,10 @@ Responde basandote unicamente en los documentos de referencia."""
         # ChromaDB L2 distance: lower is better (<0.5=alto, 0.5-1.0=medio, >1.0=bajo)
         # Convert distance to a 0-100 confidence percentage (inverted)
         percentage = max(0, min(100, int((1 / (1 + avg)) * 100)))
-        if avg < 0.5:
+        # Use percentage thresholds for level display (50% = medio boundary)
+        if percentage >= 50:
             return ConfidenceInfo(level="alto", percentage=percentage, source_count=len(documents))
-        elif avg < 1.0:
+        elif percentage >= 40:
             return ConfidenceInfo(level="medio", percentage=percentage, source_count=len(documents))
         return ConfidenceInfo(level="bajo", percentage=percentage, source_count=len(documents))
 

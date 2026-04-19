@@ -78,6 +78,11 @@ export default function App() {
     setLastQuery(null);
   }, []);
 
+  const handleHistoryItemClick = useCallback((query: string) => {
+    setError(null);
+    setLastQuery(query);
+  }, []);
+
   const handleRemoveHistory = useCallback((index: number) => {
     setHistory((h) => h.filter((_, i) => i !== index));
   }, []);
@@ -88,6 +93,7 @@ export default function App() {
         language={language}
         onLanguageChange={setLanguage}
         onCategoryClick={submitQuery}
+        onHistoryItemClick={handleHistoryItemClick}
         onNewChat={handleNewChat}
         onRemoveHistory={handleRemoveHistory}
         history={history}
@@ -100,6 +106,7 @@ export default function App() {
             loading={loading}
             error={error}
             onRetry={handleRetry}
+            suggestedQuery={lastQuery}
           />
         </div>
         <footer className="text-center py-2 text-[0.65rem] text-text-tertiary bg-cream border-t border-section/50">

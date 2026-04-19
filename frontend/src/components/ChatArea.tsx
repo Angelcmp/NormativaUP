@@ -9,12 +9,21 @@ interface ChatAreaProps {
   loading: boolean;
   error: string | null;
   onRetry?: () => void;
+  suggestedQuery?: string | null;
 }
 
-export default function ChatArea({ messages, onSubmitQuery, loading, error, onRetry }: ChatAreaProps) {
+export default function ChatArea({ messages, onSubmitQuery, loading, error, onRetry, suggestedQuery }: ChatAreaProps) {
   const [input, setInput] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (suggestedQuery !== undefined && suggestedQuery !== null) {
+      setInput(suggestedQuery);
+      inputRef.current?.focus();
+    }
+  }, [suggestedQuery]);
 
   useEffect(() => {
     if (bottomRef.current) {
@@ -80,6 +89,7 @@ export default function ChatArea({ messages, onSubmitQuery, loading, error, onRe
         <form onSubmit={handleSubmit} className="max-w-[820px] mx-auto px-6 py-4">
           <div className="flex items-center bg-paper border border-section rounded-2xl px-4 py-2 shadow-sm hover:border-muted transition-colors focus-within:border-navy-light/30 focus-within:shadow-md">
             <input
+              ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}

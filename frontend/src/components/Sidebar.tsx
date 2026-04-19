@@ -25,12 +25,13 @@ interface SidebarProps {
   language: string;
   onLanguageChange: (lang: string) => void;
   onCategoryClick: (query: string) => void;
+  onHistoryItemClick?: (query: string) => void;
   onNewChat: () => void;
   onRemoveHistory: (index: number) => void;
   history: { question: string; date: string }[];
 }
 
-export default function Sidebar({ language, onLanguageChange, onCategoryClick, onNewChat, onRemoveHistory, history }: SidebarProps) {
+export default function Sidebar({ language, onLanguageChange, onCategoryClick, onHistoryItemClick, onNewChat, onRemoveHistory, history }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -109,7 +110,7 @@ export default function Sidebar({ language, onLanguageChange, onCategoryClick, o
                     return (
                       <div key={i} className="group flex items-center gap-1">
                         <button
-                          onClick={() => onCategoryClick(item.question)}
+                          onClick={() => onHistoryItemClick ? onHistoryItemClick(item.question) : onCategoryClick(item.question)}
                           className="flex-1 text-left bg-white/[0.04] hover:bg-white/[0.10] text-white/60 hover:text-white/90 rounded-lg px-3 py-[5px] text-[0.72rem] transition-all cursor-pointer truncate"
                         >
                           {item.question.length > 30 ? item.question.slice(0, 30) + '...' : item.question}
