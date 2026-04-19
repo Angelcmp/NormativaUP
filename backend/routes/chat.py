@@ -34,24 +34,30 @@ def detect_language(query: str, preference: str) -> str:
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    if not rag_service.vector_db:
+    if not rag_service.initialized:
+        raise HTTPException(status_code=503, detail="RAG service not initialized")
+    if not rag_service.vector_db or not rag_service.vector_db.vectorstore:
         raise HTTPException(status_code=503, detail="Vector store not initialized")
 
     logger.info(f"Chat request: query='{request.query[:50]}...' lang={request.language}")
 
-    language = detect_language(request.query, request.language)
-    documents = rag_service.search(request.query)
-    answer = rag_service.generate(request.query, documents, language)
-    confidence = rag_service.calculate_confidence(documents)
-    sources = rag_service.format_sources(documents)
+    try:
+        language = detect_language(request.query, request.language)
+        documents = rag_service.search(request.query)
+        answer = rag_service.generate(request.query, documents, language)
+        confidence = rag_service.calculate_confidence(documents)
+        sources = rag_service.format_sources(documents)
 
-    logger.info(f"Chat response: level={confidence.level} sources={confidence.source_count}")
-    return ChatResponse(
-        answer=answer,
-        sources=sources,
-        confidence=confidence,
-        language=language,
-    )
+        logger.info(f"Chat response: level={confidence.level} sources={confidence.source_count}")
+        return ChatResponse(
+            answer=answer,
+            sources=sources,
+            confidence=confidence,
+            language=language,
+        )
+    except Exception as e:
+        logger.error(f"Chat error: {type(e).__name__}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error processing query: {type(e).__name__}: {e}")
 
 
 @router.get("/categories")
