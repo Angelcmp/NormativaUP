@@ -28,6 +28,7 @@ export default function App() {
   const [history, setHistory] = useState<{ question: string; date: string }[]>(() => loadJSON(STORAGE_KEY_HISTORY, []));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastQuery, setLastQuery] = useState<string | null>(null);
 
   useEffect(() => { saveJSON(STORAGE_KEY_MESSAGES, messages); }, [messages]);
   useEffect(() => { saveJSON(STORAGE_KEY_HISTORY, history); }, [history]);
@@ -36,6 +37,7 @@ export default function App() {
   const submitQuery = useCallback(async (query: string) => {
     if (loading) return;
     setError(null);
+    setLastQuery(query);
 
     const userMsg: Message = {
       id: crypto.randomUUID(),
@@ -63,9 +65,17 @@ export default function App() {
     }
   }, [loading, language]);
 
+  const handleRetry = useCallback(() => {
+    if (lastQuery) {
+      setError(null);
+      submitQuery(lastQuery);
+    }
+  }, [lastQuery, submitQuery]);
+
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setError(null);
+    setLastQuery(null);
   }, []);
 
   const handleRemoveHistory = useCallback((index: number) => {
@@ -89,6 +99,7 @@ export default function App() {
             onSubmitQuery={submitQuery}
             loading={loading}
             error={error}
+            onRetry={handleRetry}
           />
         </div>
         <footer className="text-center py-2 text-[0.65rem] text-text-tertiary bg-cream border-t border-section/50">

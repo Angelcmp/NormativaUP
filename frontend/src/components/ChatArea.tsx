@@ -8,9 +8,10 @@ interface ChatAreaProps {
   onSubmitQuery: (query: string) => void;
   loading: boolean;
   error: string | null;
+  onRetry?: () => void;
 }
 
-export default function ChatArea({ messages, onSubmitQuery, loading, error }: ChatAreaProps) {
+export default function ChatArea({ messages, onSubmitQuery, loading, error, onRetry }: ChatAreaProps) {
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -53,8 +54,20 @@ export default function ChatArea({ messages, onSubmitQuery, loading, error }: Ch
                 </div>
               )}
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-[0.85rem] mb-4 animate-fade-in">
-                  {error}
+                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-[0.85rem] mb-4 animate-fade-in">
+                  <p className="text-red-700">{error}</p>
+                  {onRetry && (
+                    <button
+                      onClick={onRetry}
+                      disabled={loading}
+                      className="mt-2 inline-flex items-center gap-1.5 text-[0.8rem] font-medium text-red-700 hover:text-red-900 underline underline-offset-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 7a6 6 0 0111.3-2.7M13 1v3.5h-3.5" />
+                      </svg>
+                      Reintentar
+                    </button>
+                  )}
                 </div>
               )}
               <div ref={bottomRef} />
