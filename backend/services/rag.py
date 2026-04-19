@@ -1,0 +1,115 @@
+"""
+RAG service — orchestrates vector search and LLM generation
+"""
+from typing import List, Optional
+
+from openai import OpenAI
+from langchain_core.documents import Document
+
+from app.config.settings import OPENAI_API_KEY, OPENAI_MODEL, TOP_K_RETRIEVAL
+from app.src.retrieval.vector_store import BaseDatosVectorial
+
+from models import SourceInfo, ConfidenceInfo
+
+SYSTEM_PROMPT = """Eres NormativaUP, asistente de inteligencia artificial especializado en leyes,
+decretos, resoluciones y normas de la Republica de Panama.
+
+Tu funcion es ayudar a los ciudadanos a encontrar informacion legal de manera clara y precisa.
+
+INSTRUCCIONES IMPORTANTES:
+1. Responde SIEMPRE en espanol, a menos que el usuario pida explicitamente ingles (EN).
+2. Cuando respondas en espanol, usa un tono profesional pero accesible.
+3. Cuando respondas en ingles, se equally professional and accessible.
+4. CITA SIEMPRE las fuentes oficiales de donde obtienes la informacion.
+5. Si no tienes suficiente informacion para responder, DICE CLARAMENTE que no tienes esa informacion.
+6. NUNCA inventes articulos, numeros de ley o contenido legal que no exista en los documentos.
+7. Si la respuesta proviene de un documento especifico, menciona el numero de ley, ano y tipo de documento.
+8. Proporciona el nivel de confianza de tu respuesta basado en la relevancia de los documentos encontrados.
+
+FORMATO DE RESPUESTA:
+- Responde de manera clara y estructurada.
+- Incluye una seccion de "FUENTES" al final con las referencias exactas.
+- Indica el "NIVEL DE CONFIANZA" como porcentaje (alto >80%, medio 50-80%, bajo <50%).
+
+Idioma de respuesta: {idioma}"""
+
+
+class RAGService:
+    def __init__(self):
+        self.vector_db: Optional[BaseDatosVectorial] = None
+        self.client: Optional[OpenAI] = None
+
+    def initialize(self):
+        if OPENAI_API_KEY and OPENAI_API_KEY != "sk-tu-api-key-aqui":
+            self.client = OpenAI(api_key=OPENAI_API_KEY)
+
+        self.vector_db = BaseDatosVectorial()
+        self.vector_db.crear_o_cargar([])
+
+    def search(self, query: str, k: int = TOP_K_RETRIEVAL) -> List[Document]:
+        if not self.vector_db or not self.vector_db.vectorstore:
+            return []
+        return self.vector_db.buscar(query, k=k)
+
+    def generate(self, query: str, documents: List[Document], language: str = "es") -> str:
+        if not self.client:
+            return "Error: OPENAI_API_KEY no configurada"
+        if not documents:
+            return ("No encontre documentos relevantes. Intente reformular su pregunta."
+                    if language == "es" else "No relevant documents found.")
+
+        context = "\n\n".join([
+            f"--- Documento {i+1} ---\nTipo: {doc.metadata.get('tipo', '')}\n"
+            f"Numero: {doc.metadata.get('numero', '')}\nAno: {doc.metadata.get('anio', '')}\n\n"
+            f"{doc.page_content[:1500]}"
+            for i, doc in enumerate(documents)
+        ])
+
+        prompt = SYSTEM_PROMPT.format(idioma=language) + f"""
+
+CONSULTA DEL USUARIO: {query}
+
+DOCUMENTOS DE REFERENCIA:
+{context}
+
+Responde basandote unicamente en los documentos de referencia."""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": query},
+                ],
+                temperature=0.3,
+                max_tokens=2000,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def calculate_confidence(self, documents: List[Document]) -> ConfidenceInfo:
+        if not documents:
+            return ConfidenceInfo(level="bajo", percentage=0, source_count=0)
+        scores = [doc.metadata.get("score", 1.0) for doc in documents]
+        avg = sum(scores) / len(scores)
+        if avg > 0.7:
+            return ConfidenceInfo(level="alto", percentage=int(avg * 100), source_count=len(documents))
+        elif avg > 0.4:
+            return ConfidenceInfo(level="medio", percentage=int(avg * 100), source_count=len(documents))
+        return ConfidenceInfo(level="bajo", percentage=int(avg * 100), source_count=len(documents))
+
+    def format_sources(self, documents: List[Document]) -> List[SourceInfo]:
+        return [
+            SourceInfo(
+                titulo=doc.metadata.get("titulo", "Documento desconocido"),
+                numero=doc.metadata.get("numero", "Sin numero"),
+                anio=doc.metadata.get("anio", "Sin ano"),
+                tipo=doc.metadata.get("tipo", "Documento"),
+                fragmento=doc.page_content[:140].replace("\n", " ") + "...",
+            )
+            for doc in documents
+        ]
+
+
+rag_service = RAGService()

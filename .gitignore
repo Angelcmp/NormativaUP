@@ -1,0 +1,53 @@
+# Environment variables — NEVER commit secrets
+.env
+.env.local
+.env.production
+backend/.env
+frontend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+*.so
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*swo
+*~
+
+# Vector store & model cache (regenerated from PDFs)
+**/vector_store/
+**/model_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Security
+*.pem
+*.key
+*.cert
+secrets/
+
+# Changelog (local only)
+CHANGELOG.md
