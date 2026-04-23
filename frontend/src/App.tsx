@@ -102,7 +102,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-cream overflow-hidden">
+    <div className="flex h-[100dvh] lg:h-screen bg-cream overflow-hidden">
       <Sidebar
         language={language}
         onLanguageChange={setLanguage}

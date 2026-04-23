@@ -41,8 +41,8 @@ export default function ChatArea({ messages, onSubmitQuery, loading, error, onRe
   }
 
   return (
-    <div className="flex flex-col h-full bg-cream">
-      <div className="lg:hidden p-3 border-b border-section/50 flex items-center">
+    <div className="flex flex-col h-[100dvh] lg:h-screen bg-cream">
+      <div className="lg:hidden p-3 border-b border-section/50 flex items-center shrink-0">
         <button
           onClick={onMenuClick}
           className="w-9 h-9 rounded-lg bg-midnight text-white flex items-center justify-center"
@@ -52,8 +52,8 @@ export default function ChatArea({ messages, onSubmitQuery, loading, error, onRe
         </button>
         <span className="ml-3 font-serif font-bold text-midnight text-sm">NormativaUP</span>
       </div>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        <div className="max-w-[820px] mx-auto px-6">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-y-contain">
+        <div className="max-w-[820px] mx-auto px-4 lg:px-6">
           {messages.length === 0 ? (
             <WelcomeScreen onSuggestionClick={onSubmitQuery} />
           ) : (
@@ -96,17 +96,18 @@ export default function ChatArea({ messages, onSubmitQuery, loading, error, onRe
         </div>
       </div>
 
-      <div className="bg-cream">
-        <form onSubmit={handleSubmit} className="max-w-[820px] mx-auto px-6 py-4">
+      <div className="bg-cream shrink-0">
+        <form onSubmit={handleSubmit} className="max-w-[820px] mx-auto px-4 lg:px-6 py-3 lg:py-4">
           <div className="flex items-center bg-paper border border-section rounded-2xl px-4 py-2 shadow-sm hover:border-muted transition-colors focus-within:border-navy-light/30 focus-within:shadow-md">
             <input
               ref={inputRef}
               type="text"
+              inputMode="search"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Consulte leyes de Panama..."
               disabled={loading}
-              className="flex-1 bg-transparent outline-none text-[0.88rem] text-text-primary placeholder:text-text-tertiary py-1 px-1"
+              className="flex-1 bg-transparent outline-none text-base lg:text-[0.88rem] text-text-primary placeholder:text-text-tertiary py-1 px-1 font-normal"
             />
             <button
               type="submit"
