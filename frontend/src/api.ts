@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatResponse, CategoryInfo, DocumentInfo } from './types';
+import type { ChatRequest, ChatResponse, CategoryInfo, DocumentInfo, ModelInfo } from './types';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -63,5 +63,20 @@ export async function fetchDocuments(): Promise<{ documents: DocumentInfo[]; sta
     return res.json();
   } catch {
     return { documents: [], stats: null };
+  }
+}
+
+export async function fetchModels(): Promise<ModelInfo[]> {
+  try {
+    const res = await fetch(`${API_BASE}/models`);
+    if (!res.ok) throw new Error('Error cargando modelos');
+    return res.json();
+  } catch {
+    return [
+      { id: "gpt-4o", name: "GPT-4o", desc: "Balance calidad/precio", input: 2.5, output: 10.0 },
+      { id: "gpt-4o-mini", name: "GPT-4o mini", desc: "Consultas simples", input: 0.15, output: 0.6 },
+      { id: "o3", name: "o3", desc: "Razonamiento complejo", input: 2.0, output: 8.0 },
+      { id: "o3-mini", name: "o3-mini", desc: "Razonamiento eficiente", input: 1.1, output: 4.4 },
+    ];
   }
 }

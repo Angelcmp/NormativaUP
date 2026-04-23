@@ -9,6 +9,7 @@ from typing import List, Optional
 class ChatRequest(BaseModel):
     query: str = Field(..., min_length=3, max_length=1000, description="Consulta legal del usuario")
     language: Optional[str] = Field(default="es", pattern=r"^(es|en)$")
+    model: Optional[str] = Field(default="gpt-4o")
 
     @field_validator("query")
     @classmethod

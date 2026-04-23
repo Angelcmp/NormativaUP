@@ -4,7 +4,7 @@ Chat endpoint — /api/chat
 import logging
 from fastapi import APIRouter, HTTPException
 
-from models import ChatRequest, ChatResponse
+from app.config.settings import OPENAI_MODELS
 from services.rag import rag_service
 
 logger = logging.getLogger("normativaup.chat")
@@ -26,6 +26,8 @@ CATEGORIES = [
 def detect_language(query: str, preference: str) -> str:
     if preference == "en":
         return "en"
+    if preference == "es":
+        return "es"
     en_words = ["how", "what", "where", "when", "why", "law", "requirements", "can", "must", "article"]
     es_words = ["como", "que", "donde", "cuando", "por que", "ley", "requisitos", "puede", "debe", "articulo"]
     q = query.lower()
@@ -43,8 +45,9 @@ async def chat(request: ChatRequest):
 
     try:
         language = detect_language(request.query, request.language)
+        model = request.model or "gpt-4o"
         documents = rag_service.search(request.query)
-        answer = rag_service.generate(request.query, documents, language)
+        answer = rag_service.generate(request.query, documents, language, model)
         confidence = rag_service.calculate_confidence(documents)
         sources = rag_service.format_sources(documents)
 
@@ -63,3 +66,8 @@ async def chat(request: ChatRequest):
 @router.get("/categories")
 async def get_categories():
     return CATEGORIES
+
+
+@router.get("/models")
+async def get_models():
+    return OPENAI_MODELS

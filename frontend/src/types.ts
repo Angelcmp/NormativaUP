@@ -1,6 +1,15 @@
 export interface ChatRequest {
   query: string;
   language?: string;
+  model?: string;
+}
+
+export interface ModelInfo {
+  id: string;
+  name: string;
+  desc: string;
+  input: number;
+  output: number;
 }
 
 export interface SourceInfo {

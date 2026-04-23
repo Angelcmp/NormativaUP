@@ -7,6 +7,8 @@ import { sendChat } from './api';
 const STORAGE_KEY_MESSAGES = 'normativaup_messages';
 const STORAGE_KEY_HISTORY = 'normativaup_history';
 const STORAGE_KEY_LANGUAGE = 'normativaup_language';
+const STORAGE_KEY_MODEL = 'normativaup_model';
+const STORAGE_KEY_SIDEBAR = 'normativaup_sidebar';
 
 function loadJSON<T>(key: string, fallback: T): T {
   try {
@@ -25,6 +27,12 @@ function saveJSON(key: string, value: unknown) {
 export default function App() {
   const [messages, setMessages] = useState<Message[]>(() => loadJSON(STORAGE_KEY_MESSAGES, []));
   const [language, setLanguage] = useState<string>(() => loadJSON(STORAGE_KEY_LANGUAGE, 'Español'));
+  const [model, setModel] = useState<string>(() => loadJSON(STORAGE_KEY_MODEL, 'gpt-4o'));
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
+    const stored = localStorage.getItem(STORAGE_KEY_SIDEBAR);
+    if (stored !== null) return JSON.parse(stored);
+    return window.innerWidth >= 1024;
+  });
   const [history, setHistory] = useState<{ question: string; date: string }[]>(() => loadJSON(STORAGE_KEY_HISTORY, []));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +41,8 @@ export default function App() {
   useEffect(() => { saveJSON(STORAGE_KEY_MESSAGES, messages); }, [messages]);
   useEffect(() => { saveJSON(STORAGE_KEY_HISTORY, history); }, [history]);
   useEffect(() => { saveJSON(STORAGE_KEY_LANGUAGE, language); }, [language]);
+  useEffect(() => { saveJSON(STORAGE_KEY_MODEL, model); }, [model]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEY_SIDEBAR, JSON.stringify(sidebarOpen)); }, [sidebarOpen]);
 
   const submitQuery = useCallback(async (query: string) => {
     if (loading) return;
@@ -49,7 +59,7 @@ export default function App() {
 
     setLoading(true);
     try {
-      const res = await sendChat({ query, language: language === 'English' ? 'en' : 'es' });
+      const res = await sendChat({ query, language: language === 'English' ? 'en' : 'es', model });
       const assistantMsg: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -63,7 +73,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [loading, language]);
+  }, [loading, language, model]);
 
   const handleRetry = useCallback(() => {
     if (lastQuery) {
@@ -80,8 +90,12 @@ export default function App() {
 
   const handleHistoryItemClick = useCallback((query: string) => {
     setError(null);
+    setMessages([]);
     setLastQuery(query);
-  }, []);
+    if (!loading) {
+      setTimeout(() => submitQuery(query), 100);
+    }
+  }, [loading, submitQuery]);
 
   const handleRemoveHistory = useCallback((index: number) => {
     setHistory((h) => h.filter((_, i) => i !== index));
@@ -92,10 +106,14 @@ export default function App() {
       <Sidebar
         language={language}
         onLanguageChange={setLanguage}
+        selectedModel={model}
+        onModelChange={setModel}
         onCategoryClick={submitQuery}
         onHistoryItemClick={handleHistoryItemClick}
         onNewChat={handleNewChat}
         onRemoveHistory={handleRemoveHistory}
+        onSidebarChange={setSidebarOpen}
+        sidebarOpen={sidebarOpen}
         history={history}
       />
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
@@ -107,6 +125,7 @@ export default function App() {
             error={error}
             onRetry={handleRetry}
             suggestedQuery={lastQuery}
+            onMenuClick={() => setSidebarOpen(true)}
           />
         </div>
         <footer className="text-center py-2 text-[0.65rem] text-text-tertiary bg-cream border-t border-section/50">

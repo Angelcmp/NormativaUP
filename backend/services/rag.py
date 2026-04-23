@@ -6,7 +6,7 @@ from typing import List, Optional
 from openai import OpenAI
 from langchain_core.documents import Document
 
-from app.config.settings import OPENAI_API_KEY, OPENAI_MODEL, TOP_K_RETRIEVAL
+from app.config.settings import OPENAI_API_KEY, OPENAI_MODEL, TOP_K_RETRIEVAL, OPENAI_MODELS
 from app.src.retrieval.vector_store import BaseDatosVectorial
 
 from models import SourceInfo, ConfidenceInfo
@@ -64,12 +64,17 @@ class RAGService:
             return []
         return self.vector_db.buscar(query, k=k)
 
-    def generate(self, query: str, documents: List[Document], language: str = "es") -> str:
+    def generate(self, query: str, documents: List[Document], language: str = "es", model: str = "gpt-4o") -> str:
         if not self.client:
             return "Error: OPENAI_API_KEY no configurada"
         if not documents:
             return ("No encontre documentos relevantes. Intente reformular su pregunta."
                     if language == "es" else "No relevant documents found.")
+
+        # Validate model
+        valid_models = [m["id"] for m in OPENAI_MODELS]
+        if model not in valid_models:
+            model = "gpt-4o"
 
         context = "\n\n".join([
             f"--- Documento {i+1} ---\nTipo: {doc.metadata.get('tipo', '')}\n"
@@ -89,7 +94,7 @@ Responde basandote unicamente en los documentos de referencia."""
 
         try:
             response = self.client.chat.completions.create(
-                model=OPENAI_MODEL,
+                model=model,
                 messages=[
                     {"role": "system", "content": prompt},
                     {"role": "user", "content": query},

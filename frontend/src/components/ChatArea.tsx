@@ -10,9 +10,10 @@ interface ChatAreaProps {
   error: string | null;
   onRetry?: () => void;
   suggestedQuery?: string | null;
+  onMenuClick?: () => void;
 }
 
-export default function ChatArea({ messages, onSubmitQuery, loading, error, onRetry, suggestedQuery }: ChatAreaProps) {
+export default function ChatArea({ messages, onSubmitQuery, loading, error, onRetry, suggestedQuery, onMenuClick }: ChatAreaProps) {
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -41,6 +42,16 @@ export default function ChatArea({ messages, onSubmitQuery, loading, error, onRe
 
   return (
     <div className="flex flex-col h-full bg-cream">
+      <div className="lg:hidden p-3 border-b border-section/50 flex items-center">
+        <button
+          onClick={onMenuClick}
+          className="w-9 h-9 rounded-lg bg-midnight text-white flex items-center justify-center"
+          aria-label="Abrir menu"
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 5h12M3 9h12M3 13h12"/></svg>
+        </button>
+        <span className="ml-3 font-serif font-bold text-midnight text-sm">NormativaUP</span>
+      </div>
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="max-w-[820px] mx-auto px-6">
           {messages.length === 0 ? (

@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import type { CategoryInfo } from '../types';
+import { useState, useEffect } from 'react';
+import type { CategoryInfo, ModelInfo } from '../types';
+import { fetchModels } from '../api';
 
 const CATEGORIES: CategoryInfo[] = [
   { label: 'Educacion', query: 'educacion beca universidad IFARHU', icon: '\u{1F4DA}' },
@@ -24,34 +25,42 @@ const DOCUMENTS = [
 interface SidebarProps {
   language: string;
   onLanguageChange: (lang: string) => void;
+  onModelChange: (model: string) => void;
+  selectedModel: string;
   onCategoryClick: (query: string) => void;
   onHistoryItemClick?: (query: string) => void;
   onNewChat: () => void;
   onRemoveHistory: (index: number) => void;
+  onSidebarChange: (open: boolean) => void;
+  sidebarOpen: boolean;
   history: { question: string; date: string }[];
 }
 
-export default function Sidebar({ language, onLanguageChange, onCategoryClick, onHistoryItemClick, onNewChat, onRemoveHistory, history }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
+export default function Sidebar({ language, onLanguageChange, onModelChange, selectedModel, onCategoryClick, onHistoryItemClick, onNewChat, onRemoveHistory, onSidebarChange, sidebarOpen, history }: SidebarProps) {
+  const [models, setModels] = useState<ModelInfo[]>([]);
+
+  useEffect(() => {
+    fetchModels().then(setModels).catch(() => {});
+  }, []);
 
   return (
     <>
-      {!collapsed && (
+      {!sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/20 z-40 lg:hidden"
-          onClick={() => setCollapsed(false)}
+          onClick={() => onSidebarChange(false)}
         />
       )}
 
       <aside
         className={`${
-          collapsed ? 'w-0 lg:w-14' : 'w-72'
-        } transition-all duration-300 ease-in-out bg-navy flex flex-col h-full overflow-hidden flex-shrink-0 relative z-50`}
+          !sidebarOpen ? 'w-0 lg:w-14 -translate-x-full lg:translate-x-0' : 'w-72 translate-x-0'
+        } transition-all duration-300 ease-in-out bg-navy flex flex-col h-full overflow-hidden flex-shrink-0 fixed lg:relative z-50`}
       >
-        {collapsed ? (
-          <div className="flex flex-col items-center pt-4 gap-3">
+        {(!sidebarOpen) ? (
+          <div className="flex flex-col items-center pt-4 gap-3 lg:hidden">
             <button
-              onClick={() => setCollapsed(false)}
+              onClick={() => onSidebarChange(true)}
               className="w-9 h-9 rounded-lg bg-white/[0.08] hover:bg-white/[0.16] text-white/60 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
               aria-label="Abrir sidebar"
             >
@@ -64,8 +73,8 @@ export default function Sidebar({ language, onLanguageChange, onCategoryClick, o
               <div className="flex items-center justify-between mb-0.5">
                 <div className="font-serif font-bold text-white text-[0.95rem] tracking-tight">NormativaUP</div>
                 <button
-                  onClick={() => setCollapsed(true)}
-                  className="w-7 h-7 rounded-md text-white/40 hover:text-white hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
+                  onClick={() => onSidebarChange(false)}
+                  className="w-7 h-7 rounded-md text-white/40 hover:text-white hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer lg:hidden"
                   aria-label="Cerrar sidebar"
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 3l8 8M11 3l-8 8"/></svg>
@@ -97,6 +106,23 @@ export default function Sidebar({ language, onLanguageChange, onCategoryClick, o
                   ))}
                 </div>
               </div>
+
+              {models.length > 0 && (
+                <div className="mt-3">
+                  <div className="text-[0.6rem] font-semibold text-white/30 uppercase tracking-[0.12em] mb-1.5">Modelo IA</div>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => onModelChange(e.target.value)}
+                    className="w-full bg-white/[0.08] hover:bg-white/[0.12] text-white/88 rounded-lg py-2 px-3 text-[0.78rem] cursor-pointer border border-white/[0.06] transition-all"
+                  >
+                    {models.map((m) => (
+                      <option key={m.id} value={m.id} className="bg-navy text-white">
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="h-px bg-white/[0.08] mx-4" />
