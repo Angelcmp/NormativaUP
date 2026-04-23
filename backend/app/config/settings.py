@@ -21,9 +21,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 OPENAI_MODELS = [
     {"id": "gpt-4o", "name": "GPT-4o", "desc": "Balance calidad/precio", "input": 2.5, "output": 10.0},
-    {"id": "gpt-4o-mini", "name": "GPT-4o mini", "desc": "Consultas simples", "input": 0.15, "output": 0.6},
-    {"id": "o3", "name": "o3", "desc": "Razonamiento complejo", "input": 2.0, "output": 8.0},
-    {"id": "o3-mini", "name": "o3-mini", "desc": "Razonamiento eficiente", "input": 1.1, "output": 4.4},
+    {"id": "gpt-4o-mini", "name": "GPT-4o mini", "desc": "Rapido y economico", "input": 0.15, "output": 0.6},
 ]
 
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
