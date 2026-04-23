@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 
 from app.config.settings import OPENAI_MODELS
+from models import ChatRequest, ChatResponse
 from services.rag import rag_service
 
 logger = logging.getLogger("normativaup.chat")
