@@ -8,7 +8,6 @@ const STORAGE_KEY_MESSAGES = 'normativaup_messages';
 const STORAGE_KEY_HISTORY = 'normativaup_history';
 const STORAGE_KEY_LANGUAGE = 'normativaup_language';
 const STORAGE_KEY_MODEL = 'normativaup_model';
-const STORAGE_KEY_SIDEBAR = 'normativaup_sidebar';
 
 function loadJSON<T>(key: string, fallback: T): T {
   try {
@@ -28,11 +27,7 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>(() => loadJSON(STORAGE_KEY_MESSAGES, []));
   const [language, setLanguage] = useState<string>(() => loadJSON(STORAGE_KEY_LANGUAGE, 'Español'));
   const [model, setModel] = useState<string>(() => loadJSON(STORAGE_KEY_MODEL, 'gpt-4o'));
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY_SIDEBAR);
-    if (stored !== null) return JSON.parse(stored);
-    return window.innerWidth >= 1024;
-  });
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [history, setHistory] = useState<{ question: string; date: string }[]>(() => loadJSON(STORAGE_KEY_HISTORY, []));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +37,6 @@ export default function App() {
   useEffect(() => { saveJSON(STORAGE_KEY_HISTORY, history); }, [history]);
   useEffect(() => { saveJSON(STORAGE_KEY_LANGUAGE, language); }, [language]);
   useEffect(() => { saveJSON(STORAGE_KEY_MODEL, model); }, [model]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEY_SIDEBAR, JSON.stringify(sidebarOpen)); }, [sidebarOpen]);
 
   const submitQuery = useCallback(async (query: string) => {
     if (loading) return;
@@ -103,6 +97,12 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-cream overflow-hidden">
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
       <Sidebar
         language={language}
         onLanguageChange={setLanguage}
