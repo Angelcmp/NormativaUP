@@ -77,7 +77,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             <SourcesPanel sources={message.sources} />
           </div>
         )}
-        {message.confidence && (
+        {message.confidence && message.confidence.percentage > 0 && (
           <div className="mt-2">
             <ConfidenceBadge confidence={message.confidence} />
           </div>
