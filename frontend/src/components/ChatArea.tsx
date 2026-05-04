@@ -1,7 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Message } from '../types';
+import type { Message, CategoryInfo, ModelInfo } from '../types';
 import MessageBubble from './MessageBubble';
 import WelcomeScreen from './WelcomeScreen';
+
+const CATEGORIES: CategoryInfo[] = [
+  { label: 'Educacion', query: 'educacion beca universidad IFARHU', icon: '\u{1F4DA}' },
+  { label: 'Trabajo', query: 'trabajo laboral empleo salario', icon: '\u2696\uFE0F' },
+  { label: 'Salud', query: 'salud seguridad social hospital', icon: '\u{1F3E5}' },
+  { label: 'Gobierno', query: 'gobierno digital servicio publico', icon: '\u{1F3DB}\uFE0F' },
+  { label: 'Transito', query: 'transito vehiculos licencia', icon: '\u{1F697}' },
+  { label: 'Ambiente', query: 'ambiente ecologia recursos naturales', icon: '\u{1F33F}' },
+  { label: 'Tributos', query: 'tributos impuestos ISR renta', icon: '\u{1F4B0}' },
+  { label: 'Datos personales', query: 'datos personales proteccion habeas data', icon: '\u{1F512}' },
+];
 
 interface ChatAreaProps {
   messages: Message[];
@@ -11,9 +22,14 @@ interface ChatAreaProps {
   onRetry?: () => void;
   suggestedQuery?: string | null;
   onMenuClick?: () => void;
+  language: string;
+  onLanguageChange: (lang: string) => void;
+  selectedModel: string;
+  models: ModelInfo[];
+  onModelChange: (model: string) => void;
 }
 
-export default function ChatArea({ messages, onSubmitQuery, loading, error, onRetry, suggestedQuery, onMenuClick }: ChatAreaProps) {
+export default function ChatArea({ messages = [], onSubmitQuery, loading, error, onRetry, suggestedQuery, onMenuClick, language, onLanguageChange, selectedModel, models = [], onModelChange }: ChatAreaProps) {
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -42,22 +58,33 @@ export default function ChatArea({ messages, onSubmitQuery, loading, error, onRe
 
   return (
     <div className="flex flex-col h-full bg-cream">
-      <div className="lg:hidden p-3 border-b border-section/50 flex items-center shrink-0">
-        <button
-          onClick={onMenuClick}
-          className="w-9 h-9 rounded-lg bg-midnight text-white flex items-center justify-center"
-          aria-label="Abrir menu"
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 5h12M3 9h12M3 13h12"/></svg>
-        </button>
-        <span className="ml-3 font-serif font-bold text-midnight text-sm">NormativaUP</span>
+      <div className="lg:hidden p-3 border-b border-section/50 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onMenuClick}
+            className="w-9 h-9 rounded-lg bg-midnight text-white flex items-center justify-center"
+            aria-label="Abrir menu"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 5h12M3 9h12M3 13h12"/></svg>
+          </button>
+          <span className="font-serif font-bold text-midnight text-sm">NormativaUP</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onLanguageChange(language === 'English' ? 'Español' : 'English')}
+            className="text-[0.7rem] text-text-tertiary hover:text-text-primary px-2 py-1 rounded-lg transition-colors cursor-pointer"
+          >
+            {language === 'English' ? 'EN' : 'ES'}
+          </button>
+        </div>
       </div>
+
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="max-w-[820px] mx-auto px-4 lg:px-6">
           {messages.length === 0 ? (
             <WelcomeScreen onSuggestionClick={onSubmitQuery} />
           ) : (
-            <div className="pt-6 pb-32">
+            <div className="pt-6 pb-4">
               {messages.map((msg) => (
                 <MessageBubble key={msg.id} message={msg} />
               ))}
@@ -82,9 +109,7 @@ export default function ChatArea({ messages, onSubmitQuery, loading, error, onRe
                       disabled={loading}
                       className="mt-2 inline-flex items-center gap-1.5 text-[0.8rem] font-medium text-red-700 hover:text-red-900 underline underline-offset-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M1 7a6 6 0 0111.3-2.7M13 1v3.5h-3.5" />
-                      </svg>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 7a6 6 0 0111.3-2.7M13 1v3.5h-3.5" /></svg>
                       Reintentar
                     </button>
                   )}
@@ -96,9 +121,24 @@ export default function ChatArea({ messages, onSubmitQuery, loading, error, onRe
         </div>
       </div>
 
-      <div className="bg-cream shrink-0">
-        <form onSubmit={handleSubmit} className="max-w-[820px] mx-auto px-4 lg:px-6 py-3 lg:py-4">
-          <div className="flex items-center bg-paper border border-section rounded-2xl px-4 py-2 shadow-sm hover:border-muted transition-colors focus-within:border-navy-light/30 focus-within:shadow-md">
+      <div className="bg-cream shrink-0 border-t border-section/50">
+        <div className="max-w-[820px] mx-auto px-4 lg:px-6 pt-2">
+          <div className="flex flex-wrap gap-1.5 pb-2">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.label}
+                onClick={() => onSubmitQuery(cat.query)}
+                className="inline-flex items-center gap-1 bg-paper border border-section rounded-full px-2.5 py-1 text-[0.7rem] text-text-secondary hover:text-text-primary hover:border-navy-light/30 transition-all cursor-pointer active:scale-95"
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="max-w-[820px] mx-auto px-4 lg:px-6 pb-3 lg:pb-4">
+          <div className="flex items-center bg-paper border border-section rounded-2xl px-3 py-1 shadow-sm hover:border-muted transition-colors focus-within:border-navy-light/30 focus-within:shadow-md">
             <input
               ref={inputRef}
               type="text"
@@ -107,17 +147,36 @@ export default function ChatArea({ messages, onSubmitQuery, loading, error, onRe
               onChange={(e) => setInput(e.target.value)}
               placeholder="Consulte leyes de Panama..."
               disabled={loading}
-              className="flex-1 bg-transparent outline-none text-[0.88rem] text-text-primary placeholder:text-text-tertiary py-1 px-1 font-normal"
+              className="flex-1 bg-transparent outline-none text-[0.88rem] text-text-primary placeholder:text-text-tertiary py-2 px-1 font-normal"
             />
-            <button
-              type="submit"
-              disabled={loading || !input.trim()}
-              className="w-9 h-9 rounded-full bg-midnight text-white flex items-center justify-center hover:bg-navy transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0 shadow-sm active:scale-95"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 8h14M8 1l7 7-7 7" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-1.5 ml-1">
+              <select
+                value={language}
+                onChange={(e) => onLanguageChange(e.target.value)}
+                className="bg-transparent text-[0.7rem] text-text-tertiary hover:text-text-primary outline-none cursor-pointer"
+              >
+                <option value="Español">ES</option>
+                <option value="English">EN</option>
+              </select>
+              {models.length > 0 && (
+                <select
+                  value={selectedModel}
+                  onChange={(e) => onModelChange(e.target.value)}
+                  className="bg-transparent text-[0.65rem] text-text-tertiary hover:text-text-primary outline-none cursor-pointer max-w-[80px] truncate"
+                >
+                  {models.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="submit"
+                disabled={loading || !input.trim()}
+                className="w-8 h-8 rounded-full bg-midnight text-white flex items-center justify-center hover:bg-navy transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0 shadow-sm active:scale-95"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 8h14M8 1l7 7-7 7" /></svg>
+              </button>
+            </div>
           </div>
         </form>
       </div>

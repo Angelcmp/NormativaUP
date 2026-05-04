@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { Message } from './types';
+import type { Message, ModelInfo } from './types';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
-import { sendChatStream } from './api';
+import { sendChatStream, fetchModels } from './api';
 
 const STORAGE_KEY_MESSAGES = 'normativaup_messages';
 const STORAGE_KEY_HISTORY = 'normativaup_history';
@@ -29,6 +29,7 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>(() => loadJSON(STORAGE_KEY_MESSAGES, []));
   const [language, setLanguage] = useState<string>(() => loadJSON(STORAGE_KEY_LANGUAGE, 'Español'));
   const [model, setModel] = useState<string>(() => loadJSON(STORAGE_KEY_MODEL, 'gpt-4o'));
+const [models, setModels] = useState<ModelInfo[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [history, setHistory] = useState<{ question: string; date: string }[]>(() => loadJSON(STORAGE_KEY_HISTORY, []));
   const [loading, setLoading] = useState(false);
@@ -40,6 +41,7 @@ export default function App() {
   useEffect(() => { saveJSON(STORAGE_KEY_HISTORY, history); }, [history]);
   useEffect(() => { saveJSON(STORAGE_KEY_LANGUAGE, language); }, [language]);
   useEffect(() => { saveJSON(STORAGE_KEY_MODEL, model); }, [model]);
+useEffect(() => { fetchModels().then(setModels).catch(() => {}); }, []);
 
   const submitQuery = useCallback(async (query: string) => {
     if (loading) return;
@@ -114,10 +116,20 @@ export default function App() {
   }, [lastQuery, submitQuery]);
 
   const handleNewChat = useCallback(() => {
+    if (lastQuery) {
+      setHistory((h) => {
+        const updated = [...h, { question: lastQuery, date: new Date().toISOString() }];
+        return updated.length > MAX_HISTORY ? updated.slice(-MAX_HISTORY) : updated;
+      });
+    }
     setMessages([]);
     setError(null);
     setLastQuery(null);
     streamingContentRef.current = '';
+  }, [lastQuery]);
+
+  const handleRemoveHistory = useCallback((index: number) => {
+    setHistory((h) => h.filter((_, i) => i !== index));
   }, []);
 
   const handleHistoryItemClick = useCallback((query: string) => {
@@ -129,10 +141,6 @@ export default function App() {
     }
   }, [loading, submitQuery]);
 
-  const handleRemoveHistory = useCallback((index: number) => {
-    setHistory((h) => h.filter((_, i) => i !== index));
-  }, []);
-
   return (
     <div className="flex h-screen bg-cream overflow-hidden">
       {sidebarOpen && (
@@ -142,11 +150,6 @@ export default function App() {
         />
       )}
       <Sidebar
-        language={language}
-        onLanguageChange={setLanguage}
-        selectedModel={model}
-        onModelChange={setModel}
-        onCategoryClick={submitQuery}
         onHistoryItemClick={handleHistoryItemClick}
         onNewChat={handleNewChat}
         onRemoveHistory={handleRemoveHistory}
@@ -164,6 +167,11 @@ export default function App() {
             onRetry={handleRetry}
             suggestedQuery={lastQuery}
             onMenuClick={() => setSidebarOpen(true)}
+            language={language}
+            onLanguageChange={setLanguage}
+            selectedModel={model}
+            models={models}
+            onModelChange={setModel}
           />
         </div>
         <footer className="text-center py-2 text-[0.65rem] text-text-tertiary bg-cream border-t border-section/50">
