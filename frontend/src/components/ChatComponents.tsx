@@ -16,7 +16,6 @@ export function ConfidenceBadge({ confidence }: { confidence: ConfidenceInfo }) 
       <div className="w-20 h-1 bg-section rounded-full overflow-hidden">
         <div className={`h-full rounded-full ${c.bar} transition-all duration-500`} style={{ width: `${confidence.percentage}%` }} />
       </div>
-      <span className="text-text-tertiary text-[0.72rem]">{confidence.source_count} fuente(s)</span>
     </div>
   );
 }
