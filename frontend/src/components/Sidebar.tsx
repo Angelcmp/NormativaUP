@@ -1,17 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { CategoryInfo, ModelInfo } from '../types';
-import { fetchModels } from '../api';
-
-const CATEGORIES: CategoryInfo[] = [
-  { label: 'Educacion', query: 'educacion beca universidad IFARHU', icon: '\u{1F4DA}' },
-  { label: 'Trabajo', query: 'trabajo laboral empleo salario', icon: '\u2696\uFE0F' },
-  { label: 'Salud', query: 'salud seguridad social hospital', icon: '\u{1F3E5}' },
-  { label: 'Gobierno', query: 'gobierno digital servicio publico', icon: '\u{1F3DB}\uFE0F' },
-  { label: 'Transito', query: 'transito vehiculos licencia', icon: '\u{1F697}' },
-  { label: 'Ambiente', query: 'ambiente ecologia recursos naturales', icon: '\u{1F33F}' },
-  { label: 'Tributos', query: 'tributos impuestos ISR renta', icon: '\u{1F4B0}' },
-  { label: 'Datos personales', query: 'datos personales proteccion habeas data', icon: '\u{1F512}' },
-];
+import { fetchModels, fetchCategories } from '../api';
 
 const DOCUMENTS = [
   'Ley 6 de 2002 - Transparencia',
@@ -38,9 +27,11 @@ interface SidebarProps {
 
 export default function Sidebar({ language, onLanguageChange, onModelChange, selectedModel, onCategoryClick, onHistoryItemClick, onNewChat, onRemoveHistory, onSidebarChange, sidebarOpen, history }: SidebarProps) {
   const [models, setModels] = useState<ModelInfo[]>([]);
+  const [categories, setCategories] = useState<CategoryInfo[]>([]);
 
   useEffect(() => {
     fetchModels().then(setModels).catch(() => {});
+    fetchCategories().then(setCategories).catch(() => {});
   }, []);
 
   return (
@@ -96,7 +87,7 @@ export default function Sidebar({ language, onLanguageChange, onModelChange, sel
               >
                 {models.map((m) => (
                   <option key={m.id} value={m.id} className="bg-navy text-white">
-                    {m.name}
+                    {m.name} (${m.input}/${m.output})
                   </option>
                 ))}
               </select>
@@ -109,17 +100,26 @@ export default function Sidebar({ language, onLanguageChange, onModelChange, sel
         <div className="p-4 pt-3 flex-shrink-0">
           <div className="text-[0.6rem] font-semibold text-white/30 uppercase tracking-[0.12em] mb-2">Historial</div>
           {history.length > 0 ? (
-            <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
-              {history.slice().reverse().slice(0, 8).map((item, i) => {
+            <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+              {history.slice().reverse().slice(0, 10).map((item, i) => {
                 const realIndex = history.length - 1 - i;
+                const date = new Date(item.date);
+                const now = new Date();
+                const isToday = date.toDateString() === now.toDateString();
+                const dateStr = isToday 
+                  ? date.toLocaleTimeString('es-PA', { hour: '2-digit', minute: '2-digit' })
+                  : date.toLocaleDateString('es-PA', { day: '2-digit', month: 'short' });
                 return (
-                  <div key={i} className="group flex items-center gap-1">
-                    <button
-                      onClick={() => onHistoryItemClick ? onHistoryItemClick(item.question) : onCategoryClick(item.question)}
-                      className="flex-1 text-left bg-white/[0.04] hover:bg-white/[0.10] text-white/60 hover:text-white/90 rounded-lg px-3 py-[5px] text-[0.72rem] transition-all cursor-pointer truncate"
-                    >
-                      {item.question.length > 30 ? item.question.slice(0, 30) + '...' : item.question}
-                    </button>
+                  <div key={i} className="group flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <button
+                        onClick={() => onHistoryItemClick ? onHistoryItemClick(item.question) : onCategoryClick(item.question)}
+                        className="w-full text-left bg-white/[0.04] hover:bg-white/[0.10] text-white/60 hover:text-white/90 rounded-lg px-3 py-[5px] text-[0.72rem] transition-all cursor-pointer truncate"
+                      >
+                        {item.question.length > 25 ? item.question.slice(0, 25) + '...' : item.question}
+                      </button>
+                      <div className="text-white/25 text-[0.6rem] px-3 mt-0.5">{dateStr}</div>
+                    </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); onRemoveHistory(realIndex); }}
                       className="w-5 h-5 rounded flex items-center justify-center text-white/0 group-hover:text-white/40 hover:text-white/70 hover:bg-white/[0.10] transition-all cursor-pointer flex-shrink-0"
@@ -141,7 +141,7 @@ export default function Sidebar({ language, onLanguageChange, onModelChange, sel
         <div className="p-4 pt-3 flex-1 overflow-y-auto">
           <div className="text-[0.6rem] font-semibold text-white/30 uppercase tracking-[0.12em] mb-2">Categorias</div>
           <div className="space-y-1">
-            {CATEGORIES.map((cat) => (
+            {categories.length > 0 ? categories.map((cat) => (
               <button
                 key={cat.label}
                 onClick={() => onCategoryClick(cat.query)}
@@ -150,7 +150,9 @@ export default function Sidebar({ language, onLanguageChange, onModelChange, sel
                 <span className="text-[0.85rem]">{cat.icon}</span>
                 <span>{cat.label}</span>
               </button>
-            ))}
+            )) : (
+              <div className="text-white/40 text-[0.72rem] py-2">Cargando categorias...</div>
+            )}
           </div>
         </div>
 

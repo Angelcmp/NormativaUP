@@ -20,7 +20,7 @@ export default function ChatArea({ messages, onSubmitQuery, loading, error, onRe
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (suggestedQuery !== undefined && suggestedQuery !== null) {
+    if (suggestedQuery !== undefined && suggestedQuery !== null && !input) {
       setInput(suggestedQuery);
       inputRef.current?.focus();
     }
@@ -61,7 +61,7 @@ export default function ChatArea({ messages, onSubmitQuery, loading, error, onRe
               {messages.map((msg) => (
                 <MessageBubble key={msg.id} message={msg} />
               ))}
-              {loading && (
+              {loading && (!messages.length || !messages[messages.length - 1].content) && (
                 <div className="flex gap-3 mb-5 animate-fade-in">
                   <div className="w-8 h-8 rounded-xl bg-midnight flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-[0.65rem] font-bold tracking-tight">UP</span>
