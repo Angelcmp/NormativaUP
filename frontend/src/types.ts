@@ -54,3 +54,10 @@ export interface Message {
   confidence?: ConfidenceInfo;
   language?: string;
 }
+
+export interface ConversationEntry {
+  id: string;
+  messages: Message[];
+  title: string;
+  date: string;
+}

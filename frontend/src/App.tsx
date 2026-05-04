@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { Message } from './types';
+import type { Message, ModelInfo, ConversationEntry } from './types';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
-import { sendChatStream } from './api';
+import { sendChatStream, fetchModels } from './api';
 
 const STORAGE_KEY_MESSAGES = 'normativaup_messages';
 const STORAGE_KEY_HISTORY = 'normativaup_history';
@@ -29,8 +29,17 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>(() => loadJSON(STORAGE_KEY_MESSAGES, []));
   const [language, setLanguage] = useState<string>(() => loadJSON(STORAGE_KEY_LANGUAGE, 'Español'));
   const [model, setModel] = useState<string>(() => loadJSON(STORAGE_KEY_MODEL, 'gpt-4o'));
+const [models, setModels] = useState<ModelInfo[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
-  const [history, setHistory] = useState<{ question: string; date: string }[]>(() => loadJSON(STORAGE_KEY_HISTORY, []));
+  const [history, setHistory] = useState<ConversationEntry[]>(() => {
+    const raw = loadJSON<unknown>(STORAGE_KEY_HISTORY, []);
+    if (!Array.isArray(raw)) return [];
+    if (raw.length > 0 && !('id' in raw[0])) {
+      localStorage.removeItem(STORAGE_KEY_HISTORY);
+      return [];
+    }
+    return raw as ConversationEntry[];
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastQuery, setLastQuery] = useState<string | null>(null);
@@ -40,11 +49,11 @@ export default function App() {
   useEffect(() => { saveJSON(STORAGE_KEY_HISTORY, history); }, [history]);
   useEffect(() => { saveJSON(STORAGE_KEY_LANGUAGE, language); }, [language]);
   useEffect(() => { saveJSON(STORAGE_KEY_MODEL, model); }, [model]);
+useEffect(() => { fetchModels().then(setModels).catch(() => {}); }, []);
 
   const submitQuery = useCallback(async (query: string) => {
     if (loading) return;
     setError(null);
-    setLastQuery(query);
 
     const userMsg: Message = {
       id: crypto.randomUUID(),
@@ -54,10 +63,6 @@ export default function App() {
     setMessages((prev) => {
       const updated = [...prev, userMsg];
       return updated.length > MAX_MESSAGES ? updated.slice(-MAX_MESSAGES) : updated;
-    });
-    setHistory((h) => {
-      const updated = [...h, { question: query, date: new Date().toISOString() }];
-      return updated.length > MAX_HISTORY ? updated.slice(-MAX_HISTORY) : updated;
     });
 
     setLoading(true);
@@ -114,24 +119,36 @@ export default function App() {
   }, [lastQuery, submitQuery]);
 
   const handleNewChat = useCallback(() => {
+    setHistory((h) => {
+      const currentMessages = messages.filter((m) => m.role === 'user' || (m.role === 'assistant' && m.content));
+      if (currentMessages.length === 0) return h;
+      const title = currentMessages[0].content.slice(0, 40);
+      const entry: ConversationEntry = {
+        id: crypto.randomUUID(),
+        messages: currentMessages,
+        title,
+        date: new Date().toISOString(),
+      };
+      const updated = [entry, ...h];
+      return updated.length > MAX_HISTORY ? updated.slice(0, MAX_HISTORY) : updated;
+    });
     setMessages([]);
     setError(null);
     setLastQuery(null);
     streamingContentRef.current = '';
-  }, []);
-
-  const handleHistoryItemClick = useCallback((query: string) => {
-    setError(null);
-    setMessages([]);
-    setLastQuery(query);
-    if (!loading) {
-      setTimeout(() => submitQuery(query), 100);
-    }
-  }, [loading, submitQuery]);
+  }, [messages]);
 
   const handleRemoveHistory = useCallback((index: number) => {
     setHistory((h) => h.filter((_, i) => i !== index));
   }, []);
+
+  const handleHistoryItemClick = useCallback((entryId: string) => {
+    const entry = history.find((h) => h.id === entryId);
+    if (!entry) return;
+    setMessages(entry.messages);
+    setError(null);
+    setLastQuery(null);
+  }, [history]);
 
   return (
     <div className="flex h-screen bg-cream overflow-hidden">
@@ -142,11 +159,6 @@ export default function App() {
         />
       )}
       <Sidebar
-        language={language}
-        onLanguageChange={setLanguage}
-        selectedModel={model}
-        onModelChange={setModel}
-        onCategoryClick={submitQuery}
         onHistoryItemClick={handleHistoryItemClick}
         onNewChat={handleNewChat}
         onRemoveHistory={handleRemoveHistory}
@@ -162,8 +174,12 @@ export default function App() {
             loading={loading}
             error={error}
             onRetry={handleRetry}
-            suggestedQuery={lastQuery}
             onMenuClick={() => setSidebarOpen(true)}
+            language={language}
+            onLanguageChange={setLanguage}
+            selectedModel={model}
+            models={models}
+            onModelChange={setModel}
           />
         </div>
         <footer className="text-center py-2 text-[0.65rem] text-text-tertiary bg-cream border-t border-section/50">
