@@ -20,7 +20,6 @@ interface ChatAreaProps {
   loading: boolean;
   error: string | null;
   onRetry?: () => void;
-  suggestedQuery?: string | null;
   onMenuClick?: () => void;
   language: string;
   onLanguageChange: (lang: string) => void;
@@ -29,18 +28,11 @@ interface ChatAreaProps {
   onModelChange: (model: string) => void;
 }
 
-export default function ChatArea({ messages = [], onSubmitQuery, loading, error, onRetry, suggestedQuery, onMenuClick, language, onLanguageChange, selectedModel, models = [], onModelChange }: ChatAreaProps) {
+export default function ChatArea({ messages = [], onSubmitQuery, loading, error, onRetry, onMenuClick, language, onLanguageChange, selectedModel, models = [], onModelChange }: ChatAreaProps) {
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (suggestedQuery !== undefined && suggestedQuery !== null && !input) {
-      setInput(suggestedQuery);
-      inputRef.current?.focus();
-    }
-  }, [suggestedQuery]);
 
   useEffect(() => {
     if (bottomRef.current) {

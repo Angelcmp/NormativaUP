@@ -54,7 +54,6 @@ useEffect(() => { fetchModels().then(setModels).catch(() => {}); }, []);
   const submitQuery = useCallback(async (query: string) => {
     if (loading) return;
     setError(null);
-    setLastQuery(query);
 
     const userMsg: Message = {
       id: crypto.randomUUID(),
@@ -175,7 +174,6 @@ useEffect(() => { fetchModels().then(setModels).catch(() => {}); }, []);
             loading={loading}
             error={error}
             onRetry={handleRetry}
-            suggestedQuery={lastQuery}
             onMenuClick={() => setSidebarOpen(true)}
             language={language}
             onLanguageChange={setLanguage}
