@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ConversationEntry } from '../types';
 
 const DOCUMENTS = [
   'Ley 6 de 2002 - Transparencia',
@@ -10,12 +11,12 @@ const DOCUMENTS = [
 ];
 
 interface SidebarProps {
-  onHistoryItemClick?: (query: string) => void;
+  onHistoryItemClick: (entryId: string) => void;
   onNewChat: () => void;
   onRemoveHistory: (index: number) => void;
   onSidebarChange: (open: boolean) => void;
   sidebarOpen: boolean;
-  history: { question: string; date: string }[];
+  history: ConversationEntry[];
 }
 
 export default function Sidebar({ onHistoryItemClick, onNewChat, onRemoveHistory, onSidebarChange, sidebarOpen, history }: SidebarProps) {
@@ -58,18 +59,24 @@ export default function Sidebar({ onHistoryItemClick, onNewChat, onRemoveHistory
           </button>
           {historyOpen && (
             <div className="space-y-1 pb-2">
-              {history.length > 0 ? history.slice().reverse().slice(0, 10).map((item, i) => {
-                const realIndex = history.length - 1 - i;
+              {history.length > 0 ? history.slice(0, 10).map((entry) => {
+                const date = new Date(entry.date);
+                const now = new Date();
+                const isToday = date.toDateString() === now.toDateString();
+                const dateStr = isToday 
+                  ? date.toLocaleTimeString('es-PA', { hour: '2-digit', minute: '2-digit' })
+                  : date.toLocaleDateString('es-PA', { day: '2-digit', month: 'short' });
                 return (
-                  <div key={i} className="group flex items-center gap-1">
+                  <div key={entry.id} className="group flex items-center gap-1">
                     <button
-                      onClick={() => onHistoryItemClick?.(item.question)}
+                      onClick={() => onHistoryItemClick(entry.id)}
                       className="flex-1 text-left text-white/60 hover:text-white/90 text-[0.72rem] py-[3px] transition-colors truncate"
                     >
-                      {item.question.length > 20 ? item.question.slice(0, 20) + '...' : item.question}
+                      {entry.title.length > 20 ? entry.title.slice(0, 20) + '...' : entry.title}
+                      <span className="text-white/25 text-[0.6rem] ml-1">{dateStr}</span>
                     </button>
                     <button
-                      onClick={() => onRemoveHistory(realIndex)}
+                      onClick={() => onRemoveHistory(history.indexOf(entry))}
                       className="w-4 h-4 rounded flex items-center justify-center text-white/0 group-hover:text-white/40 hover:text-white/70 cursor-pointer flex-shrink-0"
                       aria-label="Eliminar"
                     >

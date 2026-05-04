@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { Message, ModelInfo } from './types';
+import type { Message, ModelInfo, ConversationEntry } from './types';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import { sendChatStream, fetchModels } from './api';
@@ -31,7 +31,7 @@ export default function App() {
   const [model, setModel] = useState<string>(() => loadJSON(STORAGE_KEY_MODEL, 'gpt-4o'));
 const [models, setModels] = useState<ModelInfo[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
-  const [history, setHistory] = useState<{ question: string; date: string }[]>(() => loadJSON(STORAGE_KEY_HISTORY, []));
+  const [history, setHistory] = useState<ConversationEntry[]>(() => loadJSON(STORAGE_KEY_HISTORY, []));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastQuery, setLastQuery] = useState<string | null>(null);
@@ -56,10 +56,6 @@ useEffect(() => { fetchModels().then(setModels).catch(() => {}); }, []);
     setMessages((prev) => {
       const updated = [...prev, userMsg];
       return updated.length > MAX_MESSAGES ? updated.slice(-MAX_MESSAGES) : updated;
-    });
-    setHistory((h) => {
-      const updated = [...h, { question: query, date: new Date().toISOString() }];
-      return updated.length > MAX_HISTORY ? updated.slice(-MAX_HISTORY) : updated;
     });
 
     setLoading(true);
@@ -116,30 +112,36 @@ useEffect(() => { fetchModels().then(setModels).catch(() => {}); }, []);
   }, [lastQuery, submitQuery]);
 
   const handleNewChat = useCallback(() => {
-    if (lastQuery) {
-      setHistory((h) => {
-        const updated = [...h, { question: lastQuery, date: new Date().toISOString() }];
-        return updated.length > MAX_HISTORY ? updated.slice(-MAX_HISTORY) : updated;
-      });
-    }
+    setHistory((h) => {
+      const currentMessages = messages.filter((m) => m.role === 'user' || (m.role === 'assistant' && m.content));
+      if (currentMessages.length === 0) return h;
+      const title = currentMessages[0].content.slice(0, 40);
+      const entry: ConversationEntry = {
+        id: crypto.randomUUID(),
+        messages: currentMessages,
+        title,
+        date: new Date().toISOString(),
+      };
+      const updated = [entry, ...h];
+      return updated.length > MAX_HISTORY ? updated.slice(0, MAX_HISTORY) : updated;
+    });
     setMessages([]);
     setError(null);
     setLastQuery(null);
     streamingContentRef.current = '';
-  }, [lastQuery]);
+  }, [messages]);
 
   const handleRemoveHistory = useCallback((index: number) => {
     setHistory((h) => h.filter((_, i) => i !== index));
   }, []);
 
-  const handleHistoryItemClick = useCallback((query: string) => {
+  const handleHistoryItemClick = useCallback((entryId: string) => {
+    const entry = history.find((h) => h.id === entryId);
+    if (!entry) return;
+    setMessages(entry.messages);
     setError(null);
-    setMessages([]);
-    setLastQuery(query);
-    if (!loading) {
-      setTimeout(() => submitQuery(query), 100);
-    }
-  }, [loading, submitQuery]);
+    setLastQuery(null);
+  }, [history]);
 
   return (
     <div className="flex h-screen bg-cream overflow-hidden">
