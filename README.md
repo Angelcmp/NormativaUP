@@ -151,4 +151,4 @@ curl -X POST http://localhost:8000/api/chat \
 
 ## Licencia
 
-Prototipo academico — Universidad de Panama
+MIT License - Universidad de Panama
