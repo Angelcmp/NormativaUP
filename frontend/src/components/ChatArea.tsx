@@ -58,25 +58,15 @@ export default function ChatArea({ messages = [], onSubmitQuery, loading, error,
 
   return (
     <div className="flex flex-col h-full bg-cream">
-      <div className="lg:hidden p-3 border-b border-section/50 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onMenuClick}
-            className="w-9 h-9 rounded-lg bg-midnight text-white flex items-center justify-center"
-            aria-label="Abrir menu"
-          >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 5h12M3 9h12M3 13h12"/></svg>
-          </button>
-          <span className="font-serif font-bold text-midnight text-sm">NormativaUP</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => onLanguageChange(language === 'English' ? 'Español' : 'English')}
-            className="text-[0.7rem] text-text-tertiary hover:text-text-primary px-2 py-1 rounded-lg transition-colors cursor-pointer"
-          >
-            {language === 'English' ? 'EN' : 'ES'}
-          </button>
-        </div>
+      <div className="lg:hidden p-3 border-b border-section/50 flex items-center shrink-0">
+        <button
+          onClick={onMenuClick}
+          className="w-9 h-9 rounded-lg bg-midnight text-white flex items-center justify-center"
+          aria-label="Abrir menu"
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 5h12M3 9h12M3 13h12"/></svg>
+        </button>
+        <span className="ml-3 font-serif font-bold text-midnight text-sm">NormativaUP</span>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
@@ -138,6 +128,27 @@ export default function ChatArea({ messages = [], onSubmitQuery, loading, error,
         </div>
 
         <form onSubmit={handleSubmit} className="max-w-[820px] mx-auto px-4 lg:px-6 pb-3 lg:pb-4">
+          <div className="flex items-center gap-2 pb-1.5 lg:hidden">
+            <select
+              value={language}
+              onChange={(e) => onLanguageChange(e.target.value)}
+              className="bg-paper border border-section rounded-lg px-2 py-1 text-[0.7rem] text-text-secondary outline-none cursor-pointer"
+            >
+              <option value="Español">ES</option>
+              <option value="English">EN</option>
+            </select>
+            {models.length > 0 && (
+              <select
+                value={selectedModel}
+                onChange={(e) => onModelChange(e.target.value)}
+                className="bg-paper border border-section rounded-lg px-2 py-1 text-[0.7rem] text-text-secondary outline-none cursor-pointer"
+              >
+                {models.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
           <div className="flex items-center bg-paper border border-section rounded-2xl px-3 py-1 shadow-sm hover:border-muted transition-colors focus-within:border-navy-light/30 focus-within:shadow-md">
             <input
               ref={inputRef}
@@ -149,7 +160,7 @@ export default function ChatArea({ messages = [], onSubmitQuery, loading, error,
               disabled={loading}
               className="flex-1 bg-transparent outline-none text-[0.88rem] text-text-primary placeholder:text-text-tertiary py-2 px-1 font-normal"
             />
-            <div className="flex items-center gap-1.5 ml-1">
+            <div className="flex items-center gap-1.5 ml-1 max-lg:hidden">
               <select
                 value={language}
                 onChange={(e) => onLanguageChange(e.target.value)}
@@ -169,14 +180,14 @@ export default function ChatArea({ messages = [], onSubmitQuery, loading, error,
                   ))}
                 </select>
               )}
-              <button
-                type="submit"
-                disabled={loading || !input.trim()}
-                className="w-8 h-8 rounded-full bg-midnight text-white flex items-center justify-center hover:bg-navy transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0 shadow-sm active:scale-95"
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 8h14M8 1l7 7-7 7" /></svg>
-              </button>
             </div>
+            <button
+              type="submit"
+              disabled={loading || !input.trim()}
+              className="w-8 h-8 rounded-full bg-midnight text-white flex items-center justify-center hover:bg-navy transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex-shrink-0 shadow-sm active:scale-95"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 8h14M8 1l7 7-7 7" /></svg>
+            </button>
           </div>
         </form>
       </div>
