@@ -26,11 +26,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "font-src 'self' https://fonts.gstatic.com; "
-            "img-src 'self' data:; "
-            "connect-src 'self'; "
+            "font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; "
+            "img-src 'self' data: blob: https://www.google-analytics.com; "
+            "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://www.google-analytics.com; "
             "frame-ancestors 'none';"
         )
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
@@ -40,13 +40,25 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 RATE_LIMIT_STORE: dict[str, list] = {}
 RATE_LIMIT_REQUESTS = 30
 RATE_LIMIT_WINDOW = 60
+LAST_CLEANUP = 0
+CLEANUP_INTERVAL = 60
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        global LAST_CLEANUP
         if request.url.path.startswith("/api"):
-            client_ip = request.client.host if request.client else "unknown"
+            client_ip = request.client.host if request.client and request.client.host else "unknown"
             now = __import__("time").time()
+            
+            if now - LAST_CLEANUP > CLEANUP_INTERVAL:
+                expired = [ip for ip, times in RATE_LIMIT_STORE.items() 
+                         if all(now - t >= RATE_LIMIT_WINDOW for t in times)]
+                for ip in expired:
+                    RATE_LIMIT_STORE.pop(ip, None)
+                LAST_CLEANUP = now
+                logger.debug(f"Rate limit store cleaned, {len(RATE_LIMIT_STORE)} entries remaining")
+            
             requests = RATE_LIMIT_STORE.get(client_ip, [])
             requests = [t for t in requests if now - t < RATE_LIMIT_WINDOW]
             if len(requests) >= RATE_LIMIT_REQUESTS:

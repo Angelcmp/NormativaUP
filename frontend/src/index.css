@@ -38,9 +38,10 @@ body {
   touch-action: manipulation;
 }
 
-::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(0,32,70,0.12); border-radius: 3px; }
+* { scrollbar-width: thin; scrollbar-color: rgba(0,32,70,0.12) transparent; }
 
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(6px); }

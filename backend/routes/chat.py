@@ -2,7 +2,9 @@
 Chat endpoint — /api/chat
 """
 import logging
+import json
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 
 from app.config.settings import OPENAI_MODELS
 from models import ChatRequest, ChatResponse
@@ -25,14 +27,27 @@ CATEGORIES = [
 
 
 def detect_language(query: str, preference: str) -> str:
-    if preference == "en":
-        return "en"
-    if preference == "es":
-        return "es"
-    en_words = ["how", "what", "where", "when", "why", "law", "requirements", "can", "must", "article"]
-    es_words = ["como", "que", "donde", "cuando", "por que", "ley", "requisitos", "puede", "debe", "articulo"]
+    if preference in ("en", "es"):
+        return preference
+    
+    import re
     q = query.lower()
-    return "en" if sum(w in q for w in en_words) > sum(w in q for w in es_words) else "es"
+    
+    es_indicators = len(re.findall(r'\b(como|que|donde|cuando|por\s*que|ley|requisitos|puede|debe|articulo|sobre|cual|es|esta|son|esta|esta)\b', q))
+    en_indicators = len(re.findall(r'\b(how|what|where|when|why|law|requirements|can|must|article|about|which|is|are|this|these)\b', q))
+    
+    if es_indicators > en_indicators:
+        return "es"
+    elif en_indicators > es_indicators:
+        return "en"
+    
+    has_es_chars = bool(re.search(r'[áéíóúñü]', q))
+    has_en_chars = bool(re.search(r'[a-z]', q))
+    
+    if has_es_chars and not has_en_chars:
+        return "es"
+    
+    return "es"
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -61,6 +76,36 @@ async def chat(request: ChatRequest):
         )
     except Exception as e:
         logger.error(f"Chat error: {type(e).__name__}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error processing query: {type(e).__name__}: {e}")
+
+
+@router.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
+    if not rag_service.initialized:
+        raise HTTPException(status_code=503, detail="RAG service not initialized")
+    if not rag_service.vector_db or not rag_service.vector_db.vectorstore:
+        raise HTTPException(status_code=503, detail="Vector store not initialized")
+
+    logger.info(f"Chat stream request: query='{request.query[:50]}...' lang={request.language}")
+
+    try:
+        language = detect_language(request.query, request.language)
+        model = request.model or "gpt-4o"
+        documents = rag_service.search(request.query)
+        confidence = rag_service.calculate_confidence(documents)
+        sources = rag_service.format_sources(documents)
+
+        def event_stream():
+            full_response = ""
+            for chunk in rag_service.generate_stream(request.query, documents, language, model):
+                full_response += chunk
+                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+            
+            yield f"data: {json.dumps({'done': True, 'sources': sources, 'confidence': confidence})}\n\n"
+
+        return StreamingResponse(event_stream(), media_type="text/event-stream")
+    except Exception as e:
+        logger.error(f"Chat stream error: {type(e).__name__}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error processing query: {type(e).__name__}: {e}")
 
 

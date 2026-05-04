@@ -1,13 +1,15 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { Message } from './types';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
-import { sendChat } from './api';
+import { sendChatStream } from './api';
 
 const STORAGE_KEY_MESSAGES = 'normativaup_messages';
 const STORAGE_KEY_HISTORY = 'normativaup_history';
 const STORAGE_KEY_LANGUAGE = 'normativaup_language';
 const STORAGE_KEY_MODEL = 'normativaup_model';
+const MAX_MESSAGES = 50;
+const MAX_HISTORY = 20;
 
 function loadJSON<T>(key: string, fallback: T): T {
   try {
@@ -32,6 +34,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastQuery, setLastQuery] = useState<string | null>(null);
+  const streamingContentRef = useRef<string>('');
 
   useEffect(() => { saveJSON(STORAGE_KEY_MESSAGES, messages); }, [messages]);
   useEffect(() => { saveJSON(STORAGE_KEY_HISTORY, history); }, [history]);
@@ -48,21 +51,55 @@ export default function App() {
       role: 'user',
       content: query,
     };
-    setMessages((prev) => [...prev, userMsg]);
-    setHistory((h) => [...h, { question: query, date: new Date().toISOString() }]);
+    setMessages((prev) => {
+      const updated = [...prev, userMsg];
+      return updated.length > MAX_MESSAGES ? updated.slice(-MAX_MESSAGES) : updated;
+    });
+    setHistory((h) => {
+      const updated = [...h, { question: query, date: new Date().toISOString() }];
+      return updated.length > MAX_HISTORY ? updated.slice(-MAX_HISTORY) : updated;
+    });
 
     setLoading(true);
+    streamingContentRef.current = '';
+    
+    const tempAssistantId = crypto.randomUUID();
+    const tempMsg: Message = {
+      id: tempAssistantId,
+      role: 'assistant',
+      content: '',
+      sources: [],
+      confidence: { level: 'bajo', percentage: 0, source_count: 0 },
+    };
+    setMessages((prev) => {
+      const updated = [...prev, tempMsg];
+      return updated.length > MAX_MESSAGES ? updated.slice(-MAX_MESSAGES) : updated;
+    });
+
     try {
-      const res = await sendChat({ query, language: language === 'English' ? 'en' : 'es', model });
-      const assistantMsg: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: res.answer,
-        sources: res.sources,
-        confidence: res.confidence,
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+      const result = await sendChatStream(
+        { query, language: language === 'English' ? 'en' : 'es', model },
+        (chunk, done) => {
+          if (done) return;
+          streamingContentRef.current += chunk;
+          setMessages((prev) => 
+            prev.map((m) => 
+              m.id === tempAssistantId 
+                ? { ...m, content: streamingContentRef.current }
+                : m
+            )
+          );
+        }
+      );
+      setMessages((prev) => 
+        prev.map((m) => 
+          m.id === tempAssistantId 
+            ? { ...m, sources: result.sources, confidence: result.confidence }
+            : m
+        )
+      );
     } catch (err) {
+      setMessages((prev) => prev.filter((m) => m.id !== tempAssistantId));
       setError(err instanceof Error ? err.message : 'Error en la consulta');
     } finally {
       setLoading(false);
@@ -80,6 +117,7 @@ export default function App() {
     setMessages([]);
     setError(null);
     setLastQuery(null);
+    streamingContentRef.current = '';
   }, []);
 
   const handleHistoryItemClick = useCallback((query: string) => {

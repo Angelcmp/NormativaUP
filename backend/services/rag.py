@@ -71,7 +71,6 @@ class RAGService:
             return ("No encontre documentos relevantes. Intente reformular su pregunta."
                     if language == "es" else "No relevant documents found.")
 
-        # Validate model
         valid_models = [m["id"] for m in OPENAI_MODELS]
         if model not in valid_models:
             model = "gpt-4o"
@@ -106,18 +105,69 @@ Responde basandote unicamente en los documentos de referencia."""
         except Exception as e:
             return f"Error: {str(e)}"
 
+    def generate_stream(self, query: str, documents: List[Document], language: str = "es", model: str = "gpt-4o"):
+        if not self.client:
+            yield "Error: OPENAI_API_KEY no configurada"
+            return
+        if not documents:
+            yield "No encontre documentos relevantes. Intente reformular su pregunta."
+            return
+
+        valid_models = [m["id"] for m in OPENAI_MODELS]
+        if model not in valid_models:
+            model = "gpt-4o"
+
+        context = "\n\n".join([
+            f"--- Documento {i+1} ---\nTipo: {doc.metadata.get('tipo', '')}\n"
+            f"Numero: {doc.metadata.get('numero', '')}\nAno: {doc.metadata.get('anio', '')}\n\n"
+            f"{doc.page_content[:1500]}"
+            for i, doc in enumerate(documents)
+        ])
+
+        prompt = SYSTEM_PROMPT.format(idioma=language) + f"""
+
+CONSULTA DEL USUARIO: {query}
+
+DOCUMENTOS DE REFERENCIA:
+{context}
+
+Responde basandote unicamente en los documentos de referencia."""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": query},
+                ],
+                temperature=0.3,
+                max_tokens=2000,
+                stream=True,
+            )
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+        except Exception as e:
+            yield f"Error: {str(e)}"
+
     def calculate_confidence(self, documents: List[Document]) -> ConfidenceInfo:
         if not documents:
             return ConfidenceInfo(level="bajo", percentage=0, source_count=0)
         scores = [doc.metadata.get("score", 1.0) for doc in documents]
         avg = sum(scores) / len(scores)
-        # ChromaDB L2 distance: lower is better (<0.5=alto, 0.5-1.0=medio, >1.0=bajo)
-        # Convert distance to a 0-100 confidence percentage (inverted)
-        percentage = max(0, min(100, int((1 / (1 + avg)) * 100)))
-        # Use percentage thresholds for level display (50% = medio boundary)
+        # ChromaDB L2 distance: lower = more similar (better match)
+        # distance < 0.5 = alto, 0.5-1.0 = medio, > 1.0 = bajo
+        # Convert distance to confidence: invert the scale (low distance = high confidence)
+        if avg < 0.5:
+            percentage = int((1 - avg) * 100)  # 0-50 -> 50-100%
+        elif avg < 1.0:
+            percentage = int((1 - avg) * 100)  # 0.5-1.0 -> 0-50%
+        else:
+            percentage = max(0, int(50 - (avg - 1.0) * 20))  # >1.0 -> 0-20%
+        percentage = max(0, min(100, percentage))
         if percentage >= 50:
             return ConfidenceInfo(level="alto", percentage=percentage, source_count=len(documents))
-        elif percentage >= 40:
+        elif percentage >= 30:
             return ConfidenceInfo(level="medio", percentage=percentage, source_count=len(documents))
         return ConfidenceInfo(level="bajo", percentage=percentage, source_count=len(documents))
 

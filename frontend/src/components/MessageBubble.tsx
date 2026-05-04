@@ -1,11 +1,22 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import DOMPurify from 'dompurify';
 import type { Message } from '../types';
 import { ConfidenceBadge, SourcesPanel } from './ChatComponents';
 
 interface MessageBubbleProps {
   message: Message;
+}
+
+function sanitizeContent(content: string): string {
+  const cleaned = DOMPurify.sanitize(content, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 's', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
+                    'ul', 'ol', 'li', 'a', 'code', 'pre', 'blockquote', 'table', 'thead', 
+                    'tbody', 'tr', 'th', 'td', 'hr', 'span', 'div'],
+    ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
+  });
+  return cleaned;
 }
 
 export default function MessageBubble({ message }: MessageBubbleProps) {
@@ -40,7 +51,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         </div>
         <div className="prose-normativa text-[0.9rem] leading-[1.7] text-text-primary">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {message.content}
+            {sanitizeContent(message.content)}
           </ReactMarkdown>
         </div>
         <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">

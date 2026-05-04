@@ -114,6 +114,7 @@ Abrir `http://localhost:80`.
 | GET | `/docs` | Swagger UI |
 | POST | `/api/chat` | Consulta legal con RAG |
 | GET | `/api/categories` | Categorias disponibles |
+| GET | `/api/models` | Modelos LLM disponibles |
 | GET | `/api/documents` | Documentos indexados |
 
 ### Ejemplo de consulta

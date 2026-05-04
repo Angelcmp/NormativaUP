@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatResponse, CategoryInfo, DocumentInfo, ModelInfo } from './types';
+import type { ChatRequest, ChatResponse, CategoryInfo, DocumentInfo, ModelInfo, SourceInfo, ConfidenceInfo } from './types';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -44,6 +44,55 @@ export async function sendChat(request: ChatRequest): Promise<ChatResponse> {
     }
     throw err;
   }
+}
+
+type StreamCallback = (chunk: string, done: boolean) => void;
+
+export async function sendChatStream(request: ChatRequest, onChunk: StreamCallback): Promise<{ sources: SourceInfo[], confidence: ConfidenceInfo }> {
+  const res = await fetchWithRetry(`${API_BASE}/chat/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: '' }));
+    throw new Error(FRIENDLY_ERRORS[res.status] || err.detail || `Error ${res.status}`);
+  }
+  
+  const reader = res.body?.getReader();
+  const decoder = new TextDecoder();
+  let sources: SourceInfo[] = [];
+  let confidence: ConfidenceInfo = { level: 'bajo', percentage: 0, source_count: 0 };
+  
+  if (!reader) {
+    throw new Error('No se pudo leer la respuesta');
+  }
+  
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    const text = decoder.decode(value);
+    const lines = text.split('\n');
+    
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.chunk) {
+            onChunk(data.chunk, false);
+          } else if (data.done) {
+            sources = data.sources;
+            confidence = data.confidence;
+            onChunk('', true);
+          }
+        } catch {}
+      }
+    }
+  }
+  
+  return { sources, confidence };
 }
 
 export async function fetchCategories(): Promise<CategoryInfo[]> {
