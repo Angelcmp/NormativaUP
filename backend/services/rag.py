@@ -11,27 +11,39 @@ from app.src.retrieval.vector_store import BaseDatosVectorial
 
 from models import SourceInfo, ConfidenceInfo
 
-SYSTEM_PROMPT = """Eres NormativaUP, asistente de inteligencia artificial especializado en leyes,
+SYSTEM_PROMPT_ES = """Eres NormativaUP, asistente de inteligencia artificial especializado en leyes,
 decretos, resoluciones y normas de la Republica de Panama.
 
 Tu funcion es ayudar a los ciudadanos a encontrar informacion legal de manera clara y precisa.
 
 INSTRUCCIONES IMPORTANTES:
-1. Responde SIEMPRE en espanol, a menos que el usuario pida explicitamente ingles (EN).
-2. Cuando respondas en espanol, usa un tono profesional pero accesible.
-3. Cuando respondas en ingles, se equally professional and accessible.
-4. CITA SIEMPRE las fuentes oficiales de donde obtienes la informacion.
-5. Si no tienes suficiente informacion para responder, DICE CLARAMENTE que no tienes esa informacion.
-6. NUNCA inventes articulos, numeros de ley o contenido legal que no exista en los documentos.
-7. Si la respuesta proviene de un documento especifico, menciona el numero de ley, ano y tipo de documento.
-8. Proporciona el nivel de confianza de tu respuesta basado en la relevancia de los documentos encontrados.
+1. Responde SIEMPRE en espanol.
+2. Usa un tono profesional pero accesible.
+3. CITA SIEMPRE las fuentes oficiales de donde obtienes la informacion.
+4. Si no tienes suficiente informacion para responder, indica claramente que no tienes esa informacion.
+5. NUNCA inventes articulos, numeros de ley o contenido legal que no exista en los documentos.
 
 FORMATO DE RESPUESTA:
 - Responde de manera clara y estructurada.
 - Incluye una seccion de "FUENTES" al final con las referencias exactas.
-- Indica el "NIVEL DE CONFIANZA" como porcentaje (alto >80%, medio 50-80%, bajo <50%).
+- Indica el "NIVEL DE CONFIANZA" como porcentaje (alto >80%, medio 50-80%, bajo <50%)."""
 
-Idioma de respuesta: {idioma}"""
+SYSTEM_PROMPT_EN = """You are NormativaUP, an artificial intelligence assistant specialized in laws,
+decrees, resolutions and regulations of the Republic of Panama.
+
+Your job is to help citizens find legal information clearly and accurately.
+
+IMPORTANT INSTRUCTIONS:
+1. ALWAYS respond in English.
+2. Use a professional but accessible tone.
+3. ALWAYS CITE the official sources where you get the information.
+4. If you don't have enough information to answer, clearly state that you don't have that information.
+5. NEVER invent articles, law numbers or legal content that does not exist in the documents.
+
+RESPONSE FORMAT:
+- Respond clearly and in a structured way.
+- Include a "SOURCES" section at the end with exact references.
+- Indicate the "CONFIDENCE LEVEL" as a percentage (high >80%, medium 50-80%, low <50%)."""
 
 
 class RAGService:
@@ -82,7 +94,8 @@ class RAGService:
             for i, doc in enumerate(documents)
         ])
 
-        prompt = SYSTEM_PROMPT.format(idioma=language) + f"""
+        system_prompt = SYSTEM_PROMPT_ES if language == "es" else SYSTEM_PROMPT_EN
+        prompt = system_prompt + f"""
 
 CONSULTA DEL USUARIO: {query}
 
@@ -110,7 +123,7 @@ Responde basandote unicamente en los documentos de referencia."""
             yield "Error: OPENAI_API_KEY no configurada"
             return
         if not documents:
-            yield "No encontre documentos relevantes. Intente reformular su pregunta."
+            yield "No encontre documentos relevantes. Intente reformular su pregunta." if language == "es" else "No relevant documents found. Try rephrasing your question."
             return
 
         valid_models = [m["id"] for m in OPENAI_MODELS]
@@ -124,7 +137,8 @@ Responde basandote unicamente en los documentos de referencia."""
             for i, doc in enumerate(documents)
         ])
 
-        prompt = SYSTEM_PROMPT.format(idioma=language) + f"""
+        system_prompt = SYSTEM_PROMPT_ES if language == "es" else SYSTEM_PROMPT_EN
+        prompt = system_prompt + f"""
 
 CONSULTA DEL USUARIO: {query}
 
