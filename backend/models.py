@@ -28,6 +28,7 @@ class SourceInfo(BaseModel):
     anio: str = Field(..., max_length=10)
     tipo: str = Field(..., max_length=100)
     fragmento: str = Field(..., max_length=500)
+    doc_id: int = Field(default=0, ge=0)
 
 
 class ConfidenceInfo(BaseModel):

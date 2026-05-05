@@ -18,6 +18,7 @@ export interface SourceInfo {
   anio: string;
   tipo: string;
   fragmento: string;
+  doc_id: number;
 }
 
 export interface ConfidenceInfo {
@@ -40,10 +41,22 @@ export interface CategoryInfo {
 }
 
 export interface DocumentInfo {
+  id: number;
   titulo: string;
   numero: string;
   anio: string;
   tipo: string;
+}
+
+export interface DocumentContent {
+  id: number;
+  titulo: string;
+  numero: string;
+  anio: string;
+  tipo: string;
+  total_pages: number;
+  content: string;
+  pages: { page: number; content: string }[];
 }
 
 export interface Message {

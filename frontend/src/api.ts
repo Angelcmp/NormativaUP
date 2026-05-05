@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatResponse, CategoryInfo, DocumentInfo, ModelInfo, SourceInfo, ConfidenceInfo } from './types';
+import type { ChatRequest, ChatResponse, CategoryInfo, DocumentInfo, ModelInfo, SourceInfo, ConfidenceInfo, DocumentContent } from './types';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -125,5 +125,15 @@ export async function fetchModels(): Promise<ModelInfo[]> {
       { id: "gpt-4o", name: "GPT-4o", desc: "Balance calidad/precio", input: 2.5, output: 10.0 },
       { id: "gpt-4o-mini", name: "GPT-4o mini", desc: "Rapido y economico", input: 0.15, output: 0.6 },
     ];
+  }
+}
+
+export async function fetchDocumentContent(docId: number): Promise<DocumentContent | null> {
+  try {
+    const res = await fetch(`${API_BASE}/documents/${docId}/content`);
+    if (!res.ok) throw new Error('Error cargando contenido');
+    return res.json();
+  } catch {
+    return null;
   }
 }

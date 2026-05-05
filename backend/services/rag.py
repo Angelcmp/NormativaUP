@@ -8,6 +8,7 @@ from langchain_core.documents import Document
 
 from app.config.settings import OPENAI_API_KEY, OPENAI_MODEL, TOP_K_RETRIEVAL, OPENAI_MODELS
 from app.src.retrieval.vector_store import BaseDatosVectorial
+from app.src.document_data import DOC_ID_BY_FILENAME
 
 from models import SourceInfo, ConfidenceInfo
 
@@ -193,6 +194,7 @@ Responde basandote unicamente en los documentos de referencia."""
                 anio=doc.metadata.get("anio", "Sin ano"),
                 tipo=doc.metadata.get("tipo", "Documento"),
                 fragmento=doc.page_content[:140].replace("\n", " ") + "...",
+                doc_id=DOC_ID_BY_FILENAME.get(doc.metadata.get("titulo", ""), 0),
             )
             for doc in documents
         ]
