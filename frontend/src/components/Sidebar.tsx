@@ -25,9 +25,9 @@ export default function Sidebar({ onHistoryItemClick, onNewChat, onRemoveHistory
 
   return (
     <aside
-      className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed lg:relative lg:translate-x-0 z-50 transition-transform duration-300 ease-in-out bg-navy flex flex-col h-full overflow-hidden w-64`}
+      className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed z-50 transition-transform duration-300 ease-in-out bg-navy flex flex-col h-full overflow-hidden w-[206px]`}
     >
-      <div className="flex flex-col h-full min-w-64">
+      <div className="flex flex-col h-full min-w-[206px]">
         <div className="p-4 pb-2 flex items-center justify-between">
           <div>
             <div className="font-serif font-bold text-white text-[0.95rem] tracking-tight">NormativaUP</div>
@@ -35,7 +35,7 @@ export default function Sidebar({ onHistoryItemClick, onNewChat, onRemoveHistory
           </div>
           <button
             onClick={() => onSidebarChange(false)}
-            className="w-7 h-7 rounded-md text-white/40 hover:text-white hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer lg:hidden"
+            className="w-7 h-7 rounded-md text-white/40 hover:text-white hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
             aria-label="Cerrar sidebar"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 3l8 8M11 3l-8 8"/></svg>

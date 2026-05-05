@@ -30,7 +30,7 @@ export default function App() {
   const [language, setLanguage] = useState<string>(() => loadJSON(STORAGE_KEY_LANGUAGE, 'Español'));
   const [model, setModel] = useState<string>(() => loadJSON(STORAGE_KEY_MODEL, 'gpt-4o'));
 const [models, setModels] = useState<ModelInfo[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [history, setHistory] = useState<ConversationEntry[]>(() => {
     const raw = loadJSON<unknown>(STORAGE_KEY_HISTORY, []);
     if (!Array.isArray(raw)) return [];

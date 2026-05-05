@@ -24,7 +24,7 @@ OPENAI_MODELS = [
     {"id": "gpt-4o-mini", "name": "GPT-4o mini", "desc": "Rapido y economico", "input": 0.15, "output": 0.6},
 ]
 
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 # Embedding provider: "openai" for cloud (low memory) or "local" for sentence-transformers (high memory)
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "openai")
@@ -41,7 +41,7 @@ EMBEDDING_MODEL = EMBEDDING_MODEL_OPENAI if EMBEDDING_PROVIDER == "openai" else 
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
 
-TOP_K_RETRIEVAL = 5
+TOP_K_RETRIEVAL = 20
 
 CONFIDENCE_THRESHOLD_HIGH = 0.8
 CONFIDENCE_THRESHOLD_MEDIUM = 0.5

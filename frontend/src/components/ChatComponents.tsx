@@ -20,7 +20,7 @@ export function ConfidenceBadge({ confidence }: { confidence: ConfidenceInfo }) 
   );
 }
 
-export function SourcesPanel({ sources }: { sources: SourceInfo[] }) {
+export function SourcesPanel({ sources, onOpenSource }: { sources: SourceInfo[]; onOpenSource?: (docId: number) => void }) {
   return (
     <details className="group">
       <summary className="text-[0.8rem] text-text-secondary cursor-pointer hover:text-text-primary transition-colors flex items-center gap-1">
@@ -30,8 +30,21 @@ export function SourcesPanel({ sources }: { sources: SourceInfo[] }) {
       <div className="mt-2 space-y-2">
         {sources.map((s, i) => (
           <div key={i} className="bg-paper rounded-xl px-4 py-3 border border-section/60 text-[0.82rem]">
-            <div className="font-serif font-semibold text-midnight text-[0.88rem]">{s.tipo} {s.numero} de {s.anio}</div>
-            <div className="text-text-tertiary text-[0.72rem] mt-0.5">{s.titulo}</div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-serif font-semibold text-midnight text-[0.88rem]">{s.tipo} {s.numero} de {s.anio}</div>
+                <div className="text-text-tertiary text-[0.72rem] mt-0.5">{s.titulo}</div>
+              </div>
+              {onOpenSource && s.doc_id > 0 && (
+                <button
+                  onClick={() => onOpenSource(s.doc_id)}
+                  className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[0.65rem] font-medium text-navy-light bg-cream-dark hover:bg-section border border-section/50 hover:border-navy-light/20 transition-colors cursor-pointer"
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 4v6a1 1 0 001 1h6a1 1 0 001-1V4M6 1v6M4 4l2 2 2-2"/></svg>
+                  Ver
+                </button>
+              )}
+            </div>
             <div className="text-text-secondary text-[0.78rem] leading-relaxed mt-1">{s.fragmento}</div>
           </div>
         ))}

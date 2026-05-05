@@ -7,6 +7,7 @@ import { ConfidenceBadge, SourcesPanel } from './ChatComponents';
 
 interface MessageBubbleProps {
   message: Message;
+  onOpenSource?: (docId: number) => void;
 }
 
 function sanitizeContent(content: string): string {
@@ -19,7 +20,7 @@ function sanitizeContent(content: string): string {
   return cleaned;
 }
 
-export default function MessageBubble({ message }: MessageBubbleProps) {
+export default function MessageBubble({ message, onOpenSource }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
@@ -74,7 +75,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         </div>
         {message.sources && message.sources.length > 0 && (
           <div className="mt-3">
-            <SourcesPanel sources={message.sources} />
+            <SourcesPanel sources={message.sources} onOpenSource={onOpenSource} />
           </div>
         )}
         {message.confidence && message.confidence.percentage > 0 && (
