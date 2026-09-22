@@ -1,14 +1,7 @@
-import { useState } from 'react';
-import type { ConversationEntry } from '../types';
-
-const DOCUMENTS = [
-  'Ley 6 de 2002 - Transparencia',
-  'Ley 29 de 2002 - Universidad Publica',
-  'Ley Organica de la UP',
-  'Ley 42 de 2012 - Sistema Penitenciario',
-  'DE 356 de 2020 - Teletrabajo',
-  'Ley 187 de 2020 - Proteccion de Datos',
-];
+import { useEffect, useState } from 'react';
+import type { ConversationEntry, DocumentInfo } from '../types';
+import type { Strings } from '../i18n';
+import { fetchDocuments } from '../api';
 
 interface SidebarProps {
   onHistoryItemClick: (entryId: string) => void;
@@ -17,9 +10,16 @@ interface SidebarProps {
   onSidebarChange: (open: boolean) => void;
   sidebarOpen: boolean;
   history: ConversationEntry[];
+  strings: Strings;
 }
 
-export default function Sidebar({ onHistoryItemClick, onNewChat, onRemoveHistory, onSidebarChange, sidebarOpen, history }: SidebarProps) {
+export default function Sidebar({ onHistoryItemClick, onNewChat, onRemoveHistory, onSidebarChange, sidebarOpen, history, strings }: SidebarProps) {
+  const [documents, setDocuments] = useState<DocumentInfo[]>([]);
+
+  useEffect(() => {
+    fetchDocuments().then((data) => setDocuments(data.documents));
+  }, []);
+
   const [historyOpen, setHistoryOpen] = useState(true);
   const [docsOpen, setDocsOpen] = useState(false);
 
@@ -31,12 +31,12 @@ export default function Sidebar({ onHistoryItemClick, onNewChat, onRemoveHistory
         <div className="p-4 pb-2 flex items-center justify-between">
           <div>
             <div className="font-serif font-bold text-white text-[0.95rem] tracking-tight">NormativaUP</div>
-            <div className="text-[0.65rem] text-white/40 tracking-wide">Universidad de Panama</div>
+            <div className="text-[0.65rem] text-white/40 tracking-wide">{strings.appSubtitle}</div>
           </div>
           <button
             onClick={() => onSidebarChange(false)}
             className="w-7 h-7 rounded-md text-white/40 hover:text-white hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
-            aria-label="Cerrar sidebar"
+            aria-label={strings.closeSidebar}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 3l8 8M11 3l-8 8"/></svg>
           </button>
@@ -46,7 +46,7 @@ export default function Sidebar({ onHistoryItemClick, onNewChat, onRemoveHistory
           onClick={onNewChat}
           className="mx-4 mb-3 bg-white/[0.08] hover:bg-white/[0.16] text-white/88 hover:text-white border border-white/[0.06] rounded-lg py-2 px-3 text-[0.78rem] font-medium transition-all cursor-pointer active:scale-[0.98]"
         >
-          + Nueva consulta
+          + {strings.newChat}
         </button>
 
         <div className="flex-1 overflow-y-auto px-4 space-y-1">
@@ -54,7 +54,7 @@ export default function Sidebar({ onHistoryItemClick, onNewChat, onRemoveHistory
             onClick={() => setHistoryOpen(!historyOpen)}
             className="w-full flex items-center justify-between text-[0.6rem] font-semibold text-white/30 uppercase tracking-[0.12em] py-2 cursor-pointer hover:text-white/50 transition-colors"
           >
-            <span>Historial ({history.length})</span>
+            <span>{strings.history} ({history.length})</span>
             <svg className={`w-3 h-3 transition-transform ${historyOpen ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 5l3 3 3-3"/></svg>
           </button>
           {historyOpen && (
@@ -78,14 +78,14 @@ export default function Sidebar({ onHistoryItemClick, onNewChat, onRemoveHistory
                     <button
                       onClick={() => onRemoveHistory(history.indexOf(entry))}
                       className="w-4 h-4 rounded flex items-center justify-center text-white/0 group-hover:text-white/40 hover:text-white/70 cursor-pointer flex-shrink-0"
-                      aria-label="Eliminar"
+                      aria-label={strings.delete}
                     >
                       <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M1 1l6 6M7 1l-6 6"/></svg>
                     </button>
                   </div>
                 );
               }) : (
-                <p className="text-white/25 text-[0.72rem] italic">Sin conversaciones</p>
+                <p className="text-white/25 text-[0.72rem] italic">{strings.noConversations}</p>
               )}
             </div>
           )}
@@ -96,13 +96,15 @@ export default function Sidebar({ onHistoryItemClick, onNewChat, onRemoveHistory
             onClick={() => setDocsOpen(!docsOpen)}
             className="w-full flex items-center justify-between text-[0.6rem] font-semibold text-white/30 uppercase tracking-[0.12em] py-2 cursor-pointer hover:text-white/50 transition-colors"
           >
-            <span>Documentos</span>
+            <span>{strings.documents}</span>
             <svg className={`w-3 h-3 transition-transform ${docsOpen ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 5l3 3 3-3"/></svg>
           </button>
           {docsOpen && (
             <div className="pb-2 space-y-0.5">
-              {DOCUMENTS.map((doc) => (
-                <div key={doc} className="text-white/40 text-[0.68rem] py-[2px] leading-relaxed">{doc}</div>
+              {documents.map((doc) => (
+                <div key={doc.id} className="text-white/40 text-[0.68rem] py-[2px] leading-relaxed">
+                  {doc.tipo} {doc.numero} de {doc.anio}
+                </div>
               ))}
             </div>
           )}
@@ -110,7 +112,7 @@ export default function Sidebar({ onHistoryItemClick, onNewChat, onRemoveHistory
 
         <div className="px-4 pb-3">
           <div className="text-white/30 text-[0.6rem] leading-relaxed p-2 rounded-lg bg-black/15 border border-white/[0.04] text-center">
-            Herramienta orientativa
+            {strings.disclaimer}
           </div>
         </div>
       </div>

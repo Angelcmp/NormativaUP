@@ -1,15 +1,11 @@
+import type { Strings } from '../i18n';
+
 interface WelcomeScreenProps {
   onSuggestionClick: (query: string) => void;
+  strings: Strings;
 }
 
-const SUGGESTIONS = [
-  { text: 'Requisitos para beca del IFARHU', icon: '\u{1F4DA}' },
-  { text: 'Ley sobre teletrabajo en Panama', icon: '\u2696\uFE0F' },
-  { text: 'Ley 187 de 2020 - proteccion de datos', icon: '\u{1F512}' },
-  { text: 'Obligaciones laborales del empleador', icon: '\u{1F3E5}' },
-];
-
-export default function WelcomeScreen({ onSuggestionClick }: WelcomeScreenProps) {
+export default function WelcomeScreen({ onSuggestionClick, strings }: WelcomeScreenProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] py-16">
       <div className="w-14 h-14 rounded-2xl bg-midnight flex items-center justify-center mb-6 shadow-lg shadow-midnight/20">
@@ -22,10 +18,10 @@ export default function WelcomeScreen({ onSuggestionClick }: WelcomeScreenProps)
         NormativaUP
       </h1>
       <p className="text-text-secondary text-base font-light mb-10 text-center max-w-md leading-relaxed">
-        Consulta leyes, decretos y normas de Panama en lenguaje natural
+        {strings.welcomeSubtitle}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-[600px] w-full">
-        {SUGGESTIONS.map((s) => (
+        {strings.suggestions.map((s) => (
           <button
             key={s.text}
             onClick={() => onSuggestionClick(s.text)}

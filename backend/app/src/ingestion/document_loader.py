@@ -2,15 +2,15 @@
 Cargador de documentos PDF de leyes panameñas
 Gaceta Oficial de Panamá - Procesamiento de documentos legales
 """
-from pathlib import Path
-from typing import List, Optional
 import re
 from datetime import datetime
+from pathlib import Path
+from typing import List, Optional
 
-from pypdf import PdfReader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from loguru import logger
+from pypdf import PdfReader
 
 
 class DocumentoLegal:
@@ -24,7 +24,8 @@ class DocumentoLegal:
         tipo: str,
         institucion: str,
         contenido: str,
-        ruta_archivo: str
+        ruta_archivo: str,
+        paginas: Optional[List[str]] = None
     ):
         self.titulo = titulo
         self.numero = numero
@@ -33,6 +34,7 @@ class DocumentoLegal:
         self.institucion = institucion
         self.contenido = contenido
         self.ruta_archivo = ruta_archivo
+        self.paginas = paginas or []
         self.fecha_carga = datetime.now().isoformat()
     
     def __repr__(self):
@@ -105,11 +107,13 @@ class CargadorDocumentosLegales:
         try:
             reader = PdfReader(str(ruta_pdf))
             texto_completo = []
+            paginas = []
             
             for pagina in reader.pages:
                 texto = pagina.extract_text()
                 if texto:
                     texto_completo.append(texto)
+                    paginas.append(texto)
             
             contenido = "\n\n".join(texto_completo)
             
@@ -126,7 +130,8 @@ class CargadorDocumentosLegales:
                 tipo=metadatos["tipo"],
                 institucion=metadatos["institucion"],
                 contenido=contenido,
-                ruta_archivo=str(ruta_pdf)
+                ruta_archivo=str(ruta_pdf),
+                paginas=paginas,
             )
             
         except Exception as e:
@@ -171,9 +176,36 @@ class CargadorDocumentosLegales:
             documentos_langchain.append(documento_lc)
         
         chunks = self.text_splitter.split_documents(documentos_langchain)
+        self._asignar_paginas(chunks, documentos)
         
         logger.info(f"Creados {len(chunks)} chunks de {len(documentos)} documentos")
         return chunks
+
+    @staticmethod
+    def _asignar_paginas(chunks: List[Document], documentos: List[DocumentoLegal]) -> None:
+        """Anota el numero de pagina de origen en cada chunk."""
+        texto_por_titulo = {doc.titulo: doc for doc in documentos}
+        offsets_por_titulo = {}
+        for titulo, doc in texto_por_titulo.items():
+            offsets = []
+            acumulado = 0
+            for pagina in doc.paginas:
+                offsets.append((acumulado, acumulado + len(pagina)))
+                acumulado += len(pagina) + 2
+            offsets_por_titulo[titulo] = offsets
+
+        for chunk in chunks:
+            titulo = chunk.metadata.get("titulo")
+            offsets = offsets_por_titulo.get(titulo)
+            if not offsets:
+                continue
+            pos = texto_por_titulo[titulo].contenido.find(chunk.page_content[:60])
+            if pos < 0:
+                continue
+            for numero, (inicio, fin) in enumerate(offsets, start=1):
+                if inicio <= pos <= fin:
+                    chunk.metadata["pagina"] = numero
+                    break
 
 
 def cargar_documentos(directorio: str = "data/raw") -> List[Document]:

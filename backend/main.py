@@ -3,6 +3,9 @@ NormativaUP — FastAPI Backend
 El Jurisconsulto Digital — Universidad de Panama
 """
 import logging
+import time
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -44,12 +47,22 @@ LAST_CLEANUP = 0
 CLEANUP_INTERVAL = 60
 
 
+def get_client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+    return request.client.host if request.client and request.client.host else "unknown"
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         global LAST_CLEANUP
         if request.url.path.startswith("/api"):
-            client_ip = request.client.host if request.client and request.client.host else "unknown"
-            now = __import__("time").time()
+            client_ip = get_client_ip(request)
+            now = time.time()
             
             if now - LAST_CLEANUP > CLEANUP_INTERVAL:
                 expired = [ip for ip, times in RATE_LIMIT_STORE.items() 
@@ -72,10 +85,19 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from services.rag import rag_service
+    rag_service.initialize()
+    logger.info("NormativaUP API started — RAG service initialized")
+    yield
+
+
 app = FastAPI(
     title="NormativaUP API",
     description="API de consulta legal para leyes de Panama con RAG",
-    version="1.0.0",
+    version="0.7.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(SecurityHeadersMiddleware)
@@ -100,16 +122,9 @@ app.include_router(chat.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")
 
 
-@app.on_event("startup")
-async def startup():
-    from services.rag import rag_service
-    rag_service.initialize()
-    logger.info("NormativaUP API started — RAG service initialized")
-
-
 @app.get("/")
 async def root():
-    return {"name": "NormativaUP API", "version": "1.0.0", "status": "ok"}
+    return {"name": "NormativaUP API", "version": "0.7.0", "status": "ok"}
 
 
 @app.get("/health")

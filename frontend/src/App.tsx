@@ -3,6 +3,7 @@ import type { Message, ModelInfo, ConversationEntry } from './types';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import { sendChatStream, fetchModels } from './api';
+import { getStrings, toLang } from './i18n';
 
 const STORAGE_KEY_MESSAGES = 'normativaup_messages';
 const STORAGE_KEY_HISTORY = 'normativaup_history';
@@ -15,14 +16,18 @@ function loadJSON<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
     if (raw) return JSON.parse(raw) as T;
-  } catch {}
+  } catch {
+    return fallback;
+  }
   return fallback;
 }
 
 function saveJSON(key: string, value: unknown) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
+  } catch {
+    return;
+  }
 }
 
 export default function App() {
@@ -44,6 +49,8 @@ const [models, setModels] = useState<ModelInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [lastQuery, setLastQuery] = useState<string | null>(null);
   const streamingContentRef = useRef<string>('');
+  const abortRef = useRef<AbortController | null>(null);
+  const strings = getStrings(language);
 
   useEffect(() => { saveJSON(STORAGE_KEY_MESSAGES, messages); }, [messages]);
   useEffect(() => { saveJSON(STORAGE_KEY_HISTORY, history); }, [history]);
@@ -67,7 +74,9 @@ useEffect(() => { fetchModels().then(setModels).catch(() => {}); }, []);
 
     setLoading(true);
     streamingContentRef.current = '';
-    
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     const tempAssistantId = crypto.randomUUID();
     const tempMsg: Message = {
       id: tempAssistantId,
@@ -83,7 +92,7 @@ useEffect(() => { fetchModels().then(setModels).catch(() => {}); }, []);
 
     try {
       const result = await sendChatStream(
-        { query, language: language === 'English' ? 'en' : 'es', model },
+        { query, language: toLang(language), model },
         (chunk, done) => {
           if (done) return;
           streamingContentRef.current += chunk;
@@ -94,7 +103,8 @@ useEffect(() => { fetchModels().then(setModels).catch(() => {}); }, []);
                 : m
             )
           );
-        }
+        },
+        controller.signal,
       );
       setMessages((prev) => 
         prev.map((m) => 
@@ -104,12 +114,27 @@ useEffect(() => { fetchModels().then(setModels).catch(() => {}); }, []);
         )
       );
     } catch (err) {
-      setMessages((prev) => prev.filter((m) => m.id !== tempAssistantId));
-      setError(err instanceof Error ? err.message : 'Error en la consulta');
+      const aborted = err instanceof DOMException && err.name === 'AbortError';
+      if (aborted) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === tempAssistantId ? { ...m, content: streamingContentRef.current } : m
+          )
+        );
+      } else {
+        setMessages((prev) => prev.filter((m) => m.id !== tempAssistantId));
+        setError(err instanceof Error ? err.message : 'Error en la consulta');
+      }
     } finally {
+      abortRef.current = null;
       setLoading(false);
     }
   }, [loading, language, model]);
+
+  const handleStop = useCallback(() => {
+    abortRef.current?.abort();
+    setLoading(false);
+  }, []);
 
   const handleRetry = useCallback(() => {
     if (lastQuery) {
@@ -165,6 +190,7 @@ useEffect(() => { fetchModels().then(setModels).catch(() => {}); }, []);
         onSidebarChange={setSidebarOpen}
         sidebarOpen={sidebarOpen}
         history={history}
+        strings={strings}
       />
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <div className="flex-1 overflow-hidden">
@@ -174,16 +200,18 @@ useEffect(() => { fetchModels().then(setModels).catch(() => {}); }, []);
             loading={loading}
             error={error}
             onRetry={handleRetry}
+            onStop={handleStop}
             onMenuClick={() => setSidebarOpen(true)}
             language={language}
             onLanguageChange={setLanguage}
             selectedModel={model}
             models={models}
             onModelChange={setModel}
+            strings={strings}
           />
         </div>
         <footer className="text-center py-2 text-[0.65rem] text-text-tertiary bg-cream border-t border-section/50">
-          NormativaUP &middot; Universidad de Panama &middot; Herramienta orientativa, no sustituye asesoria legal
+          {strings.footer}
         </footer>
       </div>
     </div>

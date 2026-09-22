@@ -1,14 +1,17 @@
 """
 Chat endpoint — /api/chat
 """
-import logging
 import json
+import logging
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
+from starlette.concurrency import run_in_threadpool
 
 from app.config.settings import OPENAI_MODELS
 from models import ChatRequest, ChatResponse
-from services.rag import rag_service
+from services.rag import LLMError, rag_service
 
 logger = logging.getLogger("normativaup.chat")
 
@@ -26,27 +29,18 @@ CATEGORIES = [
 ]
 
 
-def detect_language(query: str, preference: str) -> str:
+def detect_language(query: str, preference: Optional[str]) -> str:
     if preference in ("en", "es"):
         return preference
-    
+
     import re
     q = query.lower()
-    
-    es_indicators = len(re.findall(r'\b(como|que|donde|cuando|por\s*que|ley|requisitos|puede|debe|articulo|sobre|cual|es|esta|son|esta|esta)\b', q))
+
+    es_indicators = len(re.findall(r'\b(como|que|donde|cuando|por\s*que|ley|requisitos|puede|debe|articulo|sobre|cual|es|esta|son)\b', q))
     en_indicators = len(re.findall(r'\b(how|what|where|when|why|law|requirements|can|must|article|about|which|is|are|this|these)\b', q))
-    
-    if es_indicators > en_indicators:
-        return "es"
-    elif en_indicators > es_indicators:
+
+    if en_indicators > es_indicators:
         return "en"
-    
-    has_es_chars = bool(re.search(r'[áéíóúñü]', q))
-    has_en_chars = bool(re.search(r'[a-z]', q))
-    
-    if has_es_chars and not has_en_chars:
-        return "es"
-    
     return "es"
 
 
@@ -62,8 +56,8 @@ async def chat(request: ChatRequest):
     try:
         language = detect_language(request.query, request.language)
         model = request.model or "gpt-4o"
-        documents = rag_service.search(request.query)
-        answer = rag_service.generate(request.query, documents, language, model)
+        documents = await run_in_threadpool(rag_service.search, request.query)
+        answer = await run_in_threadpool(rag_service.generate, request.query, documents, language, model)
         confidence = rag_service.calculate_confidence(documents)
         sources = rag_service.format_sources(documents)
 
@@ -74,9 +68,12 @@ async def chat(request: ChatRequest):
             confidence=confidence,
             language=language,
         )
-    except Exception as e:
-        logger.error(f"Chat error: {type(e).__name__}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error processing query: {type(e).__name__}: {e}")
+    except LLMError as e:
+        logger.error(f"Chat LLM error: {e}", exc_info=True)
+        raise HTTPException(status_code=502, detail="No se pudo generar la respuesta. Intente de nuevo.")
+    except Exception:
+        logger.exception("Chat error")
+        raise HTTPException(status_code=500, detail="Error interno al procesar la consulta.")
 
 
 @router.post("/chat/stream")
@@ -91,22 +88,32 @@ async def chat_stream(request: ChatRequest):
     try:
         language = detect_language(request.query, request.language)
         model = request.model or "gpt-4o"
-        documents = rag_service.search(request.query)
+        documents = await run_in_threadpool(rag_service.search, request.query)
         confidence = rag_service.calculate_confidence(documents)
         sources = rag_service.format_sources(documents)
 
         def event_stream():
-            full_response = ""
-            for chunk in rag_service.generate_stream(request.query, documents, language, model):
-                full_response += chunk
-                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
-            
+            try:
+                for chunk in rag_service.generate_stream(request.query, documents, language, model):
+                    yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+            except LLMError as e:
+                logger.error(f"Chat stream LLM error: {e}", exc_info=True)
+                yield f"data: {json.dumps({'error': 'No se pudo generar la respuesta. Intente de nuevo.'})}\n\n"
+                return
+            except Exception:
+                logger.exception("Chat stream error")
+                yield f"data: {json.dumps({'error': 'Error interno al generar la respuesta.'})}\n\n"
+                return
+
             yield f"data: {json.dumps({'done': True, 'sources': sources, 'confidence': confidence})}\n\n"
 
         return StreamingResponse(event_stream(), media_type="text/event-stream")
-    except Exception as e:
-        logger.error(f"Chat stream error: {type(e).__name__}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error processing query: {type(e).__name__}: {e}")
+    except LLMError as e:
+        logger.error(f"Chat stream LLM error: {e}", exc_info=True)
+        raise HTTPException(status_code=502, detail="No se pudo generar la respuesta. Intente de nuevo.")
+    except Exception:
+        logger.exception("Chat stream error")
+        raise HTTPException(status_code=500, detail="Error interno al procesar la consulta.")
 
 
 @router.get("/categories")

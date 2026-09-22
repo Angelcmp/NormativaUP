@@ -2,14 +2,21 @@
 
 Asistente de inteligencia artificial para consultar leyes, decretos y normas de la Republica de Panama. Prototipo desarrollado en la Universidad de Panama.
 
+## Demo en vivo
+
+- **Aplicacion web**: https://normativaup-frontend.onrender.com/
+- **API**: https://normativaup-backend.onrender.com — documentacion interactiva en [/docs](https://normativaup-backend.onrender.com/docs)
+
+> Desplegado en Render (plan free). El backend puede tardar unos segundos en responder tras un periodo de inactividad.
+
 ## Stack Tecnologico
 
 | Capa | Tecnologia |
 |------|------------|
 | Frontend | React 19 + Vite 8 + TypeScript + Tailwind CSS v4 |
-| Backend | FastAPI (Python 3.14) |
-| LLM | OpenAI GPT-4o |
-| Embeddings | sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 |
+| Backend | FastAPI (Python 3.12+) |
+| LLM | OpenAI GPT-4o / GPT-4o mini |
+| Embeddings | OpenAI `text-embedding-3-small` (o `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` en local) |
 | Base vectorial | ChromaDB |
 | Contenedores | Docker + docker-compose |
 
@@ -18,18 +25,19 @@ Asistente de inteligencia artificial para consultar leyes, decretos y normas de 
 ```
 NormativaIAUP/
 ├── backend/
-│   ├── main.py                 # FastAPI app + security middleware
+│   ├── main.py                 # FastAPI app, security headers, rate limiting, lifespan
 │   ├── models.py               # Pydantic schemas con validacion
 │   ├── requirements.txt
 │   ├── Dockerfile
 │   ├── routes/
-│   │   ├── chat.py             # POST /api/chat, GET /api/categories
-│   │   └── documents.py        # GET /api/documents
+│   │   ├── chat.py             # POST /api/chat, POST /api/chat/stream, GET /api/categories, GET /api/models
+│   │   └── documents.py        # GET /api/documents, /{id}/pdf, /{id}/content
 │   ├── services/
 │   │   └── rag.py              # Orquestacion RAG (OpenAI + ChromaDB)
 │   ├── app/
 │   │   ├── config/settings.py  # Configuracion centralizada
 │   │   └── src/
+│   │       ├── document_data.py        # Metadatos de documentos
 │   │       ├── retrieval/vector_store.py
 │   │       └── ingestion/document_loader.py
 │   ├── scripts/
@@ -37,6 +45,7 @@ NormativaIAUP/
 │   ├── data/
 │   │   ├── raw/               # PDFs de leyes
 │   │   └── vector_store/      # ChromaDB (se regenera)
+│   ├── .dockerignore
 │   └── .env.example
 ├── frontend/
 │   ├── src/
@@ -47,13 +56,16 @@ NormativaIAUP/
 │   │   └── components/
 │   │       ├── Sidebar.tsx
 │   │       ├── ChatArea.tsx
+│   │       ├── DocumentPanel.tsx
 │   │       ├── WelcomeScreen.tsx
 │   │       ├── MessageBubble.tsx
 │   │       └── ChatComponents.tsx
 │   ├── vite.config.ts
 │   ├── Dockerfile
+│   ├── .dockerignore
 │   └── package.json
 ├── docker-compose.yml
+├── render.yaml
 ├── .gitignore
 └── .env.example
 ```
@@ -105,6 +117,15 @@ docker-compose up --build
 
 Abrir `http://localhost:80`.
 
+## Despliegue (Render)
+
+El proyecto incluye `render.yaml` con dos servicios:
+
+- `normativaup-backend` — FastAPI (Python 3.12), `EMBEDDING_PROVIDER=openai` para no exceder el limite de memoria del plan free.
+- `normativaup-frontend` — build estatico de Vite, con rewrite de `/api/*` hacia el backend.
+
+Configura `OPENAI_API_KEY` como variable de entorno en el servicio del backend.
+
 ## API Endpoints
 
 | Metodo | Endpoint | Descripcion |
@@ -113,9 +134,12 @@ Abrir `http://localhost:80`.
 | GET | `/health` | Health check (vector store + LLM) |
 | GET | `/docs` | Swagger UI |
 | POST | `/api/chat` | Consulta legal con RAG |
+| POST | `/api/chat/stream` | Consulta legal con RAG (streaming SSE) |
 | GET | `/api/categories` | Categorias disponibles |
 | GET | `/api/models` | Modelos LLM disponibles |
 | GET | `/api/documents` | Documentos indexados |
+| GET | `/api/documents/{id}/pdf` | PDF del documento |
+| GET | `/api/documents/{id}/content` | Texto extraido del documento |
 
 ### Ejemplo de consulta
 
@@ -127,9 +151,13 @@ curl -X POST http://localhost:8000/api/chat \
 
 ## Variables de Entorno
 
-| Variable | Requerida | Descripcion |
-|----------|-----------|-------------|
-| `OPENAI_API_KEY` | Si | Clave API de OpenAI (GPT-4o) |
+| Variable | Requerida | Default | Descripcion |
+|----------|-----------|---------|-------------|
+| `OPENAI_API_KEY` | Si | — | Clave API de OpenAI |
+| `EMBEDDING_PROVIDER` | No | `openai` | `openai` (cloud, baja memoria) o `local` (sentence-transformers) |
+| `OPENAI_MODEL` | No | `gpt-4o-mini` | Modelo por defecto |
+| `HOST` | No | `0.0.0.0` | Host del servidor |
+| `PORT` | No | `8000` | Puerto del servidor |
 
 ## Documentos Indexados
 
@@ -142,12 +170,31 @@ curl -X POST http://localhost:8000/api/chat \
 
 ## Seguridad
 
-- Input validation con Pydantic (min 3, max 1000 caracteres, HTML stripping, regex para lenguaje)
-- Rate limiting: 30 req/min por IP
-- Security headers: CSP, X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy, Permissions-Policy
+- Input validation con Pydantic (min 3, max 1000 caracteres, HTML stripping, validacion de modelo y lenguaje)
+- Rate limiting: 30 req/min por IP (respeta `X-Forwarded-For`/`X-Real-IP` detras de proxy)
+- Security headers: CSP, X-Frame-Options SAMEORIGIN, X-Content-Type-Options nosniff, Referrer-Policy, Permissions-Policy
 - CORS restringido a origenes especificos
-- `.env` excluido del repositorio
+- Contexto de documentos delimitado y tratado como no confiable (mitigacion de prompt injection)
+- `.env` excluido del repositorio y de las imagenes Docker (`.dockerignore`)
 - Dependencias auditadas (0 vulnerabilidades)
+
+## Calidad y Tests
+
+```bash
+# Backend
+cd backend
+pip install -r requirements-dev.txt
+ruff check .
+pytest -q
+
+# Frontend
+cd frontend
+npm run lint
+npm test
+npm run build
+```
+
+El workflow `.github/workflows/ci.yml` ejecuta lint, typecheck, tests y build en cada push a `main` y en cada pull request.
 
 ## Licencia
 
