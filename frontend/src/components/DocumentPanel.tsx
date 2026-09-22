@@ -73,8 +73,16 @@ export default function DocumentPanel({ selectedDocId, onSelectDoc, open, onTogg
     };
   }, []);
 
+  if (!open) return null;
+
   return (
-    <aside className={`${open ? '' : 'hidden'} w-[620px] bg-paper border-l border-section/60 flex flex-col h-full overflow-hidden flex-shrink-0 max-lg:hidden`}>
+    <>
+      <div
+        className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+        onClick={onToggle}
+        aria-hidden="true"
+      />
+      <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-[92vw] sm:max-w-[420px] lg:static lg:z-auto lg:w-[620px] lg:max-w-none bg-paper border-l border-section/60 flex flex-col h-full overflow-hidden flex-shrink-0">
       <div className="px-4 py-3 border-b border-section/50 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <button
@@ -129,6 +137,7 @@ export default function DocumentPanel({ selectedDocId, onSelectDoc, open, onTogg
           />
         )}
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
