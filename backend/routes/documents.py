@@ -3,13 +3,14 @@ Documents endpoint — /api/documents
 """
 import logging
 from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pypdf import PdfReader
 
-from services.rag import rag_service
 from app.config.settings import RAW_DATA_DIR
 from app.src.document_data import DOCUMENTS_DATA
+from services.rag import rag_service
 
 logger = logging.getLogger("normativaup.documents")
 

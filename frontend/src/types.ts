@@ -19,6 +19,7 @@ export interface SourceInfo {
   tipo: string;
   fragmento: string;
   doc_id: number;
+  pagina?: number | null;
 }
 
 export interface ConfidenceInfo {

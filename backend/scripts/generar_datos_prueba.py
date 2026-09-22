@@ -2,8 +2,9 @@
 Genera PDFs con texto legal real de leyes panamenas (dominio publico).
 Texto obtenido de la Gaceta Oficial y fuentes publicas.
 """
-from fpdf import FPDF
 from pathlib import Path
+
+from fpdf import FPDF
 
 OUTPUT_DIR = Path(__file__).parent.parent / "data" / "raw"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

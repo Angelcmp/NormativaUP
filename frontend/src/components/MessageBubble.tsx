@@ -4,10 +4,12 @@ import remarkGfm from 'remark-gfm';
 import DOMPurify from 'dompurify';
 import type { Message } from '../types';
 import { ConfidenceBadge, SourcesPanel } from './ChatComponents';
+import type { Strings } from '../i18n';
 
 interface MessageBubbleProps {
   message: Message;
   onOpenSource?: (docId: number) => void;
+  strings: Strings;
 }
 
 function sanitizeContent(content: string): string {
@@ -20,7 +22,7 @@ function sanitizeContent(content: string): string {
   return cleaned;
 }
 
-export default function MessageBubble({ message, onOpenSource }: MessageBubbleProps) {
+export default function MessageBubble({ message, onOpenSource, strings }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
@@ -63,24 +65,24 @@ export default function MessageBubble({ message, onOpenSource }: MessageBubblePr
             {copied ? (
               <>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 8l2 2 6-6"/></svg>
-                Copiado
+                {strings.copied}
               </>
             ) : (
               <>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="5" y="5" width="7" height="7" rx="1"/><path d="M3 9V3.5A1.5 1.5 0 014.5 2H9"/></svg>
-                Copiar
+                {strings.copy}
               </>
             )}
           </button>
         </div>
         {message.sources && message.sources.length > 0 && (
           <div className="mt-3">
-            <SourcesPanel sources={message.sources} onOpenSource={onOpenSource} />
+            <SourcesPanel sources={message.sources} onOpenSource={onOpenSource} strings={strings} />
           </div>
         )}
         {message.confidence && message.confidence.percentage > 0 && (
           <div className="mt-2">
-            <ConfidenceBadge confidence={message.confidence} />
+            <ConfidenceBadge confidence={message.confidence} strings={strings} />
           </div>
         )}
       </div>

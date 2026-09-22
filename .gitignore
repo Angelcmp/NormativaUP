@@ -48,6 +48,3 @@ frontend/.vite/
 *.key
 *.cert
 secrets/
-
-# Changelog (local only)
-CHANGELOG.md

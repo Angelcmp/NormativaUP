@@ -2,20 +2,19 @@
 Creador de base de datos vectorial para consultas legales
 Soporta OpenAI embeddings (cloud, low memory) y sentence-transformers (local)
 """
-from pathlib import Path
-from typing import List, Optional
 import os
 import shutil
+from typing import List, Optional
 
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from loguru import logger
 
 from app.config.settings import (
-    VECTOR_STORE_DIR,
     EMBEDDING_MODEL,
     EMBEDDING_PROVIDER,
     TOP_K_RETRIEVAL,
+    VECTOR_STORE_DIR,
 )
 
 
@@ -26,6 +25,7 @@ def _create_embeddings():
         return OpenAIEmbeddings(model=EMBEDDING_MODEL)
     else:
         from langchain_huggingface import HuggingFaceEmbeddings
+
         from app.config.settings import MODEL_CACHE_DIR
         logger.info(f"Using local embeddings: {EMBEDDING_MODEL}")
         return HuggingFaceEmbeddings(
@@ -170,8 +170,8 @@ def cargar_base_datos() -> BaseDatosVectorial:
 
 
 if __name__ == "__main__":
-    from app.src.ingestion.document_loader import cargar_documentos
     from app.config.settings import RAW_DATA_DIR
+    from app.src.ingestion.document_loader import cargar_documentos
     
     logger.info("Creando base de datos vectorial...")
     documentos = cargar_documentos(str(RAW_DATA_DIR))

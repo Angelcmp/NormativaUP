@@ -48,11 +48,24 @@ export async function sendChat(request: ChatRequest): Promise<ChatResponse> {
 
 type StreamCallback = (chunk: string, done: boolean) => void;
 
-export async function sendChatStream(request: ChatRequest, onChunk: StreamCallback): Promise<{ sources: SourceInfo[], confidence: ConfidenceInfo }> {
+interface StreamEvent {
+  chunk?: string;
+  done?: boolean;
+  error?: string;
+  sources?: SourceInfo[];
+  confidence?: ConfidenceInfo;
+}
+
+export async function sendChatStream(
+  request: ChatRequest,
+  onChunk: StreamCallback,
+  signal?: AbortSignal,
+): Promise<{ sources: SourceInfo[], confidence: ConfidenceInfo }> {
   const res = await fetchWithRetry(`${API_BASE}/chat/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
+    signal,
   });
   
   if (!res.ok) {
@@ -62,36 +75,66 @@ export async function sendChatStream(request: ChatRequest, onChunk: StreamCallba
   
   const reader = res.body?.getReader();
   const decoder = new TextDecoder();
+  let buffer = '';
   let sources: SourceInfo[] = [];
   let confidence: ConfidenceInfo = { level: 'bajo', percentage: 0, source_count: 0 };
-  
+  let streamError: string | null = null;
+
   if (!reader) {
     throw new Error('No se pudo leer la respuesta');
   }
-  
+
+  const handleEvent = (rawEvent: string) => {
+    const dataLine = rawEvent.split('\n').find((line) => line.startsWith('data:'));
+    if (!dataLine) return;
+    const payload = dataLine.slice(5).trim();
+    if (!payload) return;
+
+    let data: StreamEvent;
+    try {
+      data = JSON.parse(payload) as StreamEvent;
+    } catch {
+      return;
+    }
+
+    if (data.error) {
+      streamError = data.error;
+      return;
+    }
+    if (typeof data.chunk === 'string' && data.chunk) {
+      onChunk(data.chunk, false);
+    } else if (data.done) {
+      sources = data.sources ?? [];
+      confidence = data.confidence ?? confidence;
+      onChunk('', true);
+    }
+  };
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    
-    const text = decoder.decode(value);
-    const lines = text.split('\n');
-    
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        try {
-          const data = JSON.parse(line.slice(6));
-          if (data.chunk) {
-            onChunk(data.chunk, false);
-          } else if (data.done) {
-            sources = data.sources;
-            confidence = data.confidence;
-            onChunk('', true);
-          }
-        } catch {}
-      }
+
+    buffer += decoder.decode(value, { stream: true });
+
+    let boundary = buffer.indexOf('\n\n');
+    while (boundary !== -1) {
+      const rawEvent = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      if (rawEvent.trim()) handleEvent(rawEvent);
+      boundary = buffer.indexOf('\n\n');
     }
+
+    if (streamError) break;
   }
-  
+
+  if (!streamError && buffer.trim()) {
+    handleEvent(buffer);
+  }
+
+  if (streamError) {
+    throw new Error(streamError);
+  }
+
   return { sources, confidence };
 }
 

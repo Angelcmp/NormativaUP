@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { DocumentInfo } from '../types';
+import type { Strings } from '../i18n';
 import { fetchDocuments } from '../api';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
@@ -9,14 +10,18 @@ interface DocumentPanelProps {
   onSelectDoc: (docId: number | null) => void;
   open: boolean;
   onToggle: () => void;
+  strings: Strings;
 }
 
-export default function DocumentPanel({ selectedDocId, onSelectDoc, open, onToggle }: DocumentPanelProps) {
+export default function DocumentPanel({ selectedDocId, onSelectDoc, open, onToggle, strings }: DocumentPanelProps) {
   const [documents, setDocuments] = useState<DocumentInfo[]>([]);
-  const [selectedDoc, setSelectedDoc] = useState<DocumentInfo | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [pdfState, setPdfState] = useState<{ id: number; url: string | null } | null>(null);
   const currentIdRef = useRef<number | null>(null);
+  const pdfUrlRef = useRef<string | null>(null);
+
+  const selectedDoc = selectedDocId ? documents.find((d) => d.id === selectedDocId) ?? null : null;
+  const loading = selectedDocId != null && pdfState?.id !== selectedDocId;
+  const pdfUrl = pdfState && pdfState.id === selectedDocId ? pdfState.url : null;
 
   useEffect(() => {
     fetchDocuments().then((data) => setDocuments(data.documents));
@@ -24,19 +29,23 @@ export default function DocumentPanel({ selectedDocId, onSelectDoc, open, onTogg
 
   useEffect(() => {
     if (!selectedDocId) {
-      setSelectedDoc(null);
-      setPdfUrl(null);
+      currentIdRef.current = null;
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current);
+        pdfUrlRef.current = null;
+      }
       return;
     }
-    const doc = documents.find((d) => d.id === selectedDocId);
-    setSelectedDoc(doc || null);
 
     if (currentIdRef.current === selectedDocId) return;
     currentIdRef.current = selectedDocId;
 
-    setLoading(true);
-    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-    setPdfUrl(null);
+    if (pdfUrlRef.current) {
+      URL.revokeObjectURL(pdfUrlRef.current);
+      pdfUrlRef.current = null;
+    }
+
+    let cancelled = false;
 
     fetch(`${API_BASE}/documents/${selectedDocId}/pdf`)
       .then((res) => {
@@ -44,18 +53,23 @@ export default function DocumentPanel({ selectedDocId, onSelectDoc, open, onTogg
         return res.blob();
       })
       .then((blob) => {
+        if (cancelled) return;
         const url = URL.createObjectURL(blob);
-        setPdfUrl(url);
-        setLoading(false);
+        pdfUrlRef.current = url;
+        setPdfState({ id: selectedDocId, url });
       })
       .catch(() => {
-        setLoading(false);
+        if (!cancelled) setPdfState({ id: selectedDocId, url: null });
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedDocId, documents]);
 
   useEffect(() => {
     return () => {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
     };
   }, []);
 
@@ -66,12 +80,12 @@ export default function DocumentPanel({ selectedDocId, onSelectDoc, open, onTogg
           <button
             onClick={onToggle}
             className="w-7 h-7 rounded-md bg-section/60 hover:bg-section text-text-tertiary hover:text-text-primary flex items-center justify-center transition-colors cursor-pointer shrink-0"
-            title="Colapsar panel"
+            title={strings.collapsePanel}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3l5 5-5 5"/></svg>
           </button>
           <h2 className="text-[0.8rem] font-semibold text-midnight font-serif tracking-tight truncate">
-            {selectedDoc ? selectedDoc.titulo : 'Documentos'}
+            {selectedDoc ? selectedDoc.titulo : strings.documents}
           </h2>
         </div>
         {selectedDoc && (
@@ -87,7 +101,7 @@ export default function DocumentPanel({ selectedDocId, onSelectDoc, open, onTogg
       <div className="flex-1 overflow-hidden">
         {!selectedDocId && (
           <div className="p-3 space-y-1 overflow-y-auto h-full">
-            <p className="text-[0.68rem] text-text-tertiary px-2 pb-1">Seleccione un documento</p>
+            <p className="text-[0.68rem] text-text-tertiary px-2 pb-1">{strings.selectDocument}</p>
             {documents.map((doc) => (
               <button
                 key={doc.id}
